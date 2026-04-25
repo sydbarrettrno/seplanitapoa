@@ -1,0 +1,33 @@
+{
+  "project_id": "mallmann_pmi",
+  "project_name": "Mallmann PMI - baseline fixture",
+  "processing_version": "v072-manifest-1",
+  "output_root": "output",
+  "documents": [
+    {
+      "source_pdf": "input/P02_06 - PMI - CONSTRUTORA MALLMANN.pdf",
+      "output_dir": "output",
+      "clean": {
+        "coord_tol": 0.25,
+        "gap_tol": 0.15
+      },
+      "pages": [
+        {
+          "page_index": 0,
+          "regions": [
+            {
+              "region_id": "1pav",
+              "region_type": "floor_plan",
+              "bbox": [240, 450, 1160, 1640],
+              "origin": [280, 1600],
+              "scale": null,
+              "output_name": "Mallmann06_1Pavimento_V072",
+              "notes": "Fixture baseline aprovada"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "notes": "Manifesto de exemplo: transformar caso Mallmann em fixture de regressão"
+}
