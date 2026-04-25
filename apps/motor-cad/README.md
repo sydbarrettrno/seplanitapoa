@@ -1,13 +1,13 @@
 # Motor CAD — SEPLAN Itapoá
 
-Motor experimental para leitura de PDF vetorial de projeto arquitetônico e geração de DXF compatível com AutoCAD 2026.
+Motor para leitura de PDF vetorial de projeto arquitetônico e geração de DXF compatível com AutoCAD 2026.
 
-## Versões incluídas
+## Estado atual
 
-- V07.2 — Clean Native Export (base técnica aprovada).
-- V07.3 — Separação conservadora de cotas/textos em layers dedicados.
+- **Baseline operacional:** V07.2 — Clean Native Export.
+- **V07.3 anterior:** mantida apenas como experimento rejeitado (não padrão operacional).
 
-## Como rodar
+## Como rodar (baseline V07.2)
 
 1. Execute:
 
@@ -15,7 +15,7 @@ Motor experimental para leitura de PDF vetorial de projeto arquitetônico e gera
 00_instalar_dependencias.bat
 ```
 
-2. Execute V07.3 (1º pavimento):
+2. Execute (1º pavimento):
 
 ```bat
 01_rodar_1pavimento.bat
@@ -24,19 +24,24 @@ Motor experimental para leitura de PDF vetorial de projeto arquitetônico e gera
 3. Abra no AutoCAD 2026:
 
 ```text
-output\Mallmann06_1Pavimento_V073.dxf
+output\Mallmann06_1Pavimento_V072.dxf
 ```
 
-## Layers atuais
+## Layers baseline
 
-- `A-WALL` — geometria principal de paredes (mantida da V07.2).
-- `A-REF` — referências e entidades incertas.
-- `A-DIM` — entidades de cota promovidas de forma conservadora.
-- `A-TEXT` — textos reais extraídos do PDF.
+- `A-WALL`
+- `A-REF`
 
-## Regras de evolução (V07.3)
+## Regra de evolução
 
-- Não alterar a geometria base da V07.2.
-- Se houver dúvida de classificação, manter em `A-REF`.
-- Não aplicar interpretação semântica global (portas, janelas, mobiliário etc. ficam fora desta etapa).
-- DXF deve permanecer compatível com R12 / AC1009 e abrir no AutoCAD 2026.
+- Não piorar visualmente a baseline V07.2.
+- OVERKILL é termômetro externo, não etapa de correção.
+- Novas hipóteses (ex.: classificação de DIM/TEXT) devem ser validadas fora do DXF de produção antes de promoção.
+
+## Testes de baseline
+
+Rodar checks automáticos:
+
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+```
