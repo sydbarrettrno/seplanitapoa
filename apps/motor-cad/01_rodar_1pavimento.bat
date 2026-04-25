@@ -6,5 +6,5 @@ if not exist ".venv\Scripts\activate.bat" (
   exit /b 1
 )
 call .venv\Scripts\activate
-python motor_v072.py --pdf "input\P02_06 - PMI - CONSTRUTORA MALLMANN.pdf" --page 0 --view 240,450,1160,1640 --origin 280,1600 --outdir output --name Mallmann06_1Pavimento_V072
+python motor_v073.py --pdf "input\P02_06 - PMI - CONSTRUTORA MALLMANN.pdf" --page 0 --view 240,450,1160,1640 --origin 280,1600 --outdir output --name Mallmann06_1Pavimento_V073
 pause
