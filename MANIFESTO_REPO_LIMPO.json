@@ -1,0 +1,21 @@
+{
+  "file_count": 13,
+  "contains_venv": false,
+  "contains_generated_output": false,
+  "contains_generated_reports": false,
+  "files": [
+    ".gitignore",
+    "README.md",
+    "apps/motor-cad/00_instalar_dependencias.bat",
+    "apps/motor-cad/01_rodar_1pavimento.bat",
+    "apps/motor-cad/02_rodar_2pavimento.bat",
+    "apps/motor-cad/LEIA_PRIMEIRO.txt",
+    "apps/motor-cad/README.md",
+    "apps/motor-cad/docs/V07_2_BASE_TECNICA_APROVADA.md",
+    "apps/motor-cad/input/P02_06 - PMI - CONSTRUTORA MALLMANN.pdf",
+    "apps/motor-cad/motor_v072.py",
+    "apps/motor-cad/output/.gitkeep",
+    "apps/motor-cad/reports/.gitkeep",
+    "apps/motor-cad/requirements.txt"
+  ]
+}

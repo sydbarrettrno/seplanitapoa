@@ -1,0 +1,12 @@
+MOTOR V07.2 — CLEAN NATIVE EXPORT
+
+O script evita gerar lixo digital antes de salvar o DXF.
+Não usa OVERKILL como solução.
+OVERKILL deve ser usado só como termômetro externo.
+
+Rodar:
+1. 00_instalar_dependencias.bat
+2. 01_rodar_1pavimento.bat
+3. abrir saida_v072\Mallmann06_1Pavimento_V072.dxf no AutoCAD 2026
+
+Layers mantidos: A-WALL e A-REF.
