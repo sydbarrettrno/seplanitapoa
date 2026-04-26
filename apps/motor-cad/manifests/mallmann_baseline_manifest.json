@@ -1,0 +1,59 @@
+{
+  "manifest_version": "0.1",
+  "project_id": "mallmann_pmi",
+  "project_name": "Mallmann PMI - baseline fixture",
+  "processing_version": "v072-manifest-1",
+  "output_root": "output",
+  "tags": ["golden", "baseline", "fixture"],
+  "documents": [
+    {
+      "doc_id": "mallmann_pdf_p02_06",
+      "source_pdf": "input/P02_06 - PMI - CONSTRUTORA MALLMANN.pdf",
+      "source_pdf_sha256": "15da48530d30c72fc2d164af67959c507551fd52bacf825c17033fcbf0fc613b",
+      "output_dir": "output",
+      "clean": {
+        "coord_tol": 0.25,
+        "gap_tol": 0.15
+      },
+      "pages": [
+        {
+          "page_index": 0,
+          "regions": [
+            {
+              "region_id": "1pav",
+              "region_type": "floor_plan",
+              "drawing_type": "floor_plan",
+              "building_block": "mallmann",
+              "level_id": "P01",
+              "level_name": "1º Pavimento",
+              "bbox": [240, 450, 1160, 1640],
+              "origin": [280, 1600],
+              "scale": null,
+              "output_name": "Mallmann06_1Pavimento_V072",
+              "notes": "Fixture baseline aprovada"
+            }
+          ]
+        }
+      ],
+      "notes": "Documento vetorial de referência para regressão"
+    }
+  ],
+  "expected": {
+    "final_lines": 8654,
+    "layers": {
+      "A-WALL": 2951,
+      "A-REF": 5703
+    }
+  },
+  "export": {
+    "dxf_format": "R12 / AC1009",
+    "target": "AutoCAD 2026",
+    "write_svg": true
+  },
+  "audit": {
+    "save_region_report": true,
+    "save_run_summary": true,
+    "capture_manifest_snapshot": true
+  },
+  "notes": "Manifesto de exemplo: transformar caso Mallmann em fixture de regressão"
+}
