@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Motor CAD Input Manifest v0.1",
+  "type": "object",
+  "required": ["documents"],
+  "properties": {
+    "manifest_version": { "type": "string" },
+    "project_id": { "type": "string" },
+    "project_name": { "type": "string" },
+    "processing_version": { "type": "string" },
+    "output_root": { "type": "string" },
+    "documents": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["source_pdf", "pages"],
+        "properties": {
+          "doc_id": { "type": "string" },
+          "source_pdf": { "type": "string" },
+          "source_pdf_sha256": { "type": ["string", "null"] },
+          "output_dir": { "type": "string" },
+          "clean": {
+            "type": "object",
+            "properties": {
+              "coord_tol": { "type": "number" },
+              "gap_tol": { "type": "number" }
+            }
+          },
+          "pages": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["page_index", "regions"],
+              "properties": {
+                "page_index": { "type": "integer", "minimum": 0 },
+                "regions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": ["bbox", "origin"],
+                    "properties": {
+                      "region_id": { "type": "string" },
+                      "region_type": { "type": "string" },
+                      "drawing_type": { "type": "string" },
+                      "building_block": { "type": "string" },
+                      "level_id": { "type": "string" },
+                      "level_name": { "type": "string" },
+                      "bbox": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
+                      "origin": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+                      "scale": {},
+                      "output_name": { "type": "string" },
+                      "notes": { "type": "string" },
+                      "tags": { "type": "array", "items": { "type": "string" } }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "expected": {},
+          "export": {},
+          "audit": {},
+          "notes": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "expected": {},
+    "export": {},
+    "audit": {},
+    "notes": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" } }
+  }
+}
