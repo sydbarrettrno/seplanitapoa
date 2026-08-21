@@ -1,11 +1,5 @@
-# seplanitapoa
+# SEPLAN | Gestão à Vista
 
-Repositório para desenvolvimento do projeto SEPLAN Itapoá.
+Dashboard institucional da Secretaria de Planejamento de Itapoá-SC.
 
-## Módulos
-
-- `apps/motor-cad/`: motor experimental para geração de DXF a partir de PDF vetorial.
-
-## Estado atual
-
-Motor CAD V07.2 — base técnica aprovada.
+Fonte oficial: base XLSX normalizada 2025+; frontend com indicadores executivos, filtros, aging, gargalos e drill-down auditável.
