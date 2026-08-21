@@ -1,83 +1,161 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import * as XLSX from 'xlsx'
 
 const TERMINAIS = new Set(['ENCERRADO','ARQUIVADO','CANCELADO'])
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-const clean = (v) => (v == null ? '' : String(v).trim())
-const num = (v) => Number.isFinite(Number(v)) ? Number(v) : 0
-const dateOnly = (v) => {
-  const s = clean(v); if (!s) return null
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(`${s.slice(0,10)}T12:00:00`)
-  const d = new Date(s); return Number.isNaN(d.getTime()) ? null : d
-}
-const fmtDate = (v) => { const d=dateOnly(v); return d ? d.toLocaleDateString('pt-BR') : '—' }
-const fmtDateTime = (v) => { const s=clean(v); if(!s)return '—'; const d=new Date(s.replace(' ','T')); return Number.isNaN(d.getTime())?s:d.toLocaleString('pt-BR') }
-const median = (arr) => { if(!arr.length)return 0; const s=[...arr].sort((a,b)=>a-b),m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2 }
-const daysBetween = (a,b) => { const da=dateOnly(a),db=dateOnly(b); return !da||!db?null:Math.max(0,Math.round((db-da)/86400000)) }
+const CUTS = [15,30,60,90,120]
+const clean = v => v == null ? '' : String(v).trim()
+const num = v => Number.isFinite(Number(v)) ? Number(v) : 0
+const toDate = v => { const s=clean(v); if(!s) return null; const d=new Date(s.length===10?`${s}T12:00:00`:s); return Number.isNaN(d.getTime())?null:d }
+const fmtDate = v => { const d=toDate(v); return d?d.toLocaleDateString('pt-BR'):'—' }
+const fmtDateTime = v => { const d=toDate(v); return d?d.toLocaleString('pt-BR'):'—' }
+const mean = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : 0
+const median = a => { if(!a.length)return 0; const s=[...a].sort((x,y)=>x-y),m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2 }
+const daysBetween = (a,b) => { const x=toDate(a),y=toDate(b); return !x||!y?null:Math.max(0,Math.round((y-x)/86400000)) }
+const yearOf = v => toDate(v)?.getFullYear() || null
 
-function normalize(row){
-  const situacao=clean(row.SituacaoAtual)
-  const encerrado=Boolean(clean(row.DataEncerramento))||TERMINAIS.has(situacao.toUpperCase())
-  return {...row,
-    ProtocoloID:clean(row.ProtocoloID), NumeroAnoOriginal:clean(row.NumeroAnoOriginal),
-    DataAberturaISO:clean(row.DataAberturaISO)||clean(row.DataAbertura),
-    UltimoTramiteDataHoraISO:clean(row.UltimoTramiteDataHoraISO)||clean(row.UltimoTramite),
-    DataEncerramento:clean(row.DataEncerramento), SituacaoAtual:situacao,
-    CategoriaFinal:clean(row.CategoriaFinalV05)&&clean(row.CategoriaFinalV05)!=='NÃO DETERMINADO'?clean(row.CategoriaFinalV05):'Classificação pendente',
-    StatusOperacionalAtual:clean(row.StatusOperacionalAtual)||'Não identificado',
-    Responsavel:clean(row.ResponsavelGargaloAtual)||clean(row.ResponsavelAtualFonte)||'Não identificado',
-    Prioridade:clean(row.PrioridadeAtual)||'—', DiasSemMovimento:num(row.DiasSemMovimento),
-    InscricaoBase:clean(row.InscricaoBase)||clean(row.InscricaoImobiliaria), encerrado, ativo:!encerrado
+function normalize(r){
+  const situacao=clean(r.s)
+  const encerradoFormal=Boolean(clean(r.e))
+  const terminal=TERMINAIS.has(situacao.toUpperCase())
+  return {
+    id:clean(r.id), protocolo:clean(r.n)||clean(r.id), ano:num(r.y), abertura:clean(r.a), ultimo:clean(r.u), encerramento:clean(r.e),
+    situacao, categoria:clean(r.c)==='NÃO DETERMINADO'||!clean(r.c)?'Classificação pendente':clean(r.c),
+    status:clean(r.st)||'Não identificado', responsavel:clean(r.r)||'Não identificado', dias:num(r.d), prioridade:clean(r.p)||'—',
+    inscricao:clean(r.i), encerradoFormal, ativo:!encerradoFormal&&!terminal
   }
 }
 
-async function loadWorkbook(){
-  const response=await fetch('/SEPLAN_BASE_ATUAL.xlsx',{cache:'no-store'})
-  if(!response.ok) throw new Error(`Base XLSX indisponível (${response.status})`)
-  const buffer=await response.arrayBuffer()
-  const workbook=XLSX.read(buffer,{type:'array',cellDates:false})
-  const sheet=workbook.Sheets[workbook.SheetNames[0]]
-  return XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false}).map(normalize)
+async function loadData(){
+  const urls=['/data/2025-a.json','/data/2025-b.json','/data/2026.json']
+  const parts=await Promise.all(urls.map(async u=>{const r=await fetch(u,{cache:'no-store'}); if(!r.ok)throw new Error(`Falha ao carregar ${u}`); return r.json()}))
+  return parts.flat().map(normalize)
 }
 
-const groupCount=(rows,key,limit=10)=>{const m=new Map();rows.forEach(r=>{const k=clean(r[key])||'Não identificado';m.set(k,(m.get(k)||0)+1)});return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,limit).map(([label,value])=>({label,value}))}
-
-function Header({updated,total}){return <header className="topbar"><div><div className="eyebrow">SECRETARIA DE PLANEJAMENTO · ITAPOÁ/SC</div><h1>SEPLAN <span>| Gestão à Vista</span></h1><p>Processos, desempenho e capacidade operacional</p></div><div className="updateBox"><span>Base atual</span><strong>{updated||'carregando…'}</strong><small>{total.toLocaleString('pt-BR')} protocolos</small></div></header>}
-function Tabs({tab,setTab}){return <nav className="tabs">{['Gestão à Vista','Fila Crítica','Radar Operacional','Processos','Qualidade','Auditoria'].map(t=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}>{t}</button>)}</nav>}
-function Filters({year,setYear,category,setCategory,status,setStatus,categories,statuses}){return <div className="filters"><div className="segmented">{['2026','2025','Todos'].map(v=><button key={v} className={year===v?'active':''} onClick={()=>setYear(v)}>{v}</button>)}</div><select value={category} onChange={e=>setCategory(e.target.value)}><option value="">Todas as categorias</option>{categories.map(x=><option key={x}>{x}</option>)}</select><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Todos os status</option>{statuses.map(x=><option key={x}>{x}</option>)}</select>{(category||status||year!=='2026')&&<button className="clear" onClick={()=>{setYear('2026');setCategory('');setStatus('')}}>Limpar filtros</button>}</div>}
-function Kpi({label,value,sub,tone='blue',onClick}){return <button className={`kpi kpi-${tone}`} onClick={onClick}><span>{label}</span><strong>{value}</strong><small>{sub}</small></button>}
-function Bars({data,onClick}){const max=Math.max(1,...data.map(d=>d.value));return <div className="bars">{data.map(d=><button className="barRow" key={d.label} onClick={()=>onClick?.(d)}><span className="barLabel" title={d.label}>{d.label}</span><div className="barTrack"><i style={{width:`${(d.value/max)*100}%`}}/></div><b>{d.value}</b></button>)}</div>}
-
-function LineChart({data}){const w=720,h=235,p=26,max=Math.max(1,...data.flatMap(d=>[d.recebidos,d.concluidos])),x=i=>p+(i*(w-2*p)/Math.max(1,data.length-1)),y=v=>h-p-(v/max)*(h-2*p),pts=key=>data.map((d,i)=>`${x(i)},${y(d[key])}`).join(' ');return <div className="lineWrap"><svg viewBox={`0 0 ${w} ${h}`}><>{[0,.25,.5,.75,1].map((q,i)=><line key={i} x1={p} x2={w-p} y1={p+q*(h-2*p)} y2={p+q*(h-2*p)} className="gridline"/>)}</><polyline points={pts('recebidos')} className="line received"/><polyline points={pts('concluidos')} className="line closed"/>{data.map((d,i)=><text key={d.label} x={x(i)} y={h-5} textAnchor="middle" className="axisText">{d.label}</text>)}</svg><div className="legend"><span><i className="dot blue"/>Recebidos</span><span><i className="dot green"/>Concluídos</span></div></div>}
-
-function ProcessDrawer({rows,title,onClose}){if(!rows)return null;return <div className="overlay" onClick={onClose}><div className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><div><small>DRILL-DOWN</small><h3>{title}</h3><p>{rows.length.toLocaleString('pt-BR')} protocolos</p></div><button onClick={onClose}>×</button></div><div className="tableWrap"><table><thead><tr><th>Protocolo</th><th>Abertura</th><th>Categoria</th><th>Status</th><th>Responsável</th><th>Dias s/ mov.</th><th>Inscrição</th></tr></thead><tbody>{rows.slice(0,500).map(r=><tr key={r.ProtocoloID}><td className="mono">{r.NumeroAnoOriginal||r.ProtocoloID}</td><td>{fmtDate(r.DataAberturaISO)}</td><td>{r.CategoriaFinal}</td><td>{r.StatusOperacionalAtual}</td><td>{r.Responsavel}</td><td className={r.DiasSemMovimento>60?'dangerNum':r.DiasSemMovimento>30?'warnNum':''}>{r.DiasSemMovimento}</td><td className="mono">{r.InscricaoBase||'—'}</td></tr>)}</tbody></table>{rows.length>500&&<p className="tableNote">Exibindo os primeiros 500 registros deste recorte.</p>}</div></div></div>}
-
-function Dashboard({rows,setDrawer}){
-  const recebidos=rows.length,concluidos=rows.filter(r=>r.DataEncerramento).length,ativos=rows.filter(r=>r.ativo)
-  const tempos=rows.filter(r=>r.DataEncerramento).map(r=>daysBetween(r.DataAberturaISO,r.DataEncerramento)).filter(v=>v!=null),med=Math.round(median(tempos)),parados=ativos.filter(r=>r.DiasSemMovimento>30)
-  const aging=[['0–15',r=>r.DiasSemMovimento<=15],['16–30',r=>r.DiasSemMovimento>=16&&r.DiasSemMovimento<=30],['31–60',r=>r.DiasSemMovimento>=31&&r.DiasSemMovimento<=60],['61–90',r=>r.DiasSemMovimento>=61&&r.DiasSemMovimento<=90],['91–120',r=>r.DiasSemMovimento>=91&&r.DiasSemMovimento<=120],['>120',r=>r.DiasSemMovimento>120]].map(([label,fn])=>({label,value:ativos.filter(fn).length,fn}))
-  const status=groupCount(ativos,'StatusOperacionalAtual',8),cats=groupCount(rows,'CategoriaFinal',8),garg=groupCount(ativos,'Responsavel',8)
-  const years=[...new Set(rows.map(r=>dateOnly(r.DataAberturaISO)?.getFullYear()).filter(Boolean))],year=years.length===1?years[0]:Math.max(...years,2026)
-  const serie=MESES.map((m,idx)=>({label:m,recebidos:rows.filter(r=>{const d=dateOnly(r.DataAberturaISO);return d&&d.getFullYear()===year&&d.getMonth()===idx}).length,concluidos:rows.filter(r=>{const d=dateOnly(r.DataEncerramento);return d&&d.getFullYear()===year&&d.getMonth()===idx}).length}))
-  return <><div className="kpiGrid"><Kpi label="Recebidos" value={recebidos.toLocaleString('pt-BR')} sub="protocolos no recorte" onClick={()=>setDrawer({title:'Processos recebidos',rows})}/><Kpi label="Concluídos" value={concluidos.toLocaleString('pt-BR')} sub="encerramento formal" tone="green" onClick={()=>setDrawer({title:'Concluídos',rows:rows.filter(r=>r.DataEncerramento)})}/><Kpi label="Estoque atual" value={ativos.length.toLocaleString('pt-BR')} sub="processos ativos" tone="slate" onClick={()=>setDrawer({title:'Estoque atual',rows:ativos})}/><Kpi label="Tempo mediano" value={tempos.length?`${med} d`:'—'} sub={tempos.length?'abertura → encerramento':'sem dados suficientes'} tone="violet"/><Kpi label="Parados >30 d" value={parados.length.toLocaleString('pt-BR')} sub={ativos.length?`${((parados.length/ativos.length)*100).toFixed(1)}% do estoque`:'—'} tone="red" onClick={()=>setDrawer({title:'Parados há mais de 30 dias',rows:parados})}/></div><div className="grid2"><section className="panel span2"><div className="panelHead"><div><small>FLUXO</small><h2>Entradas × conclusões</h2></div><span className="hint">Abertura e encerramento formal</span></div><LineChart data={serie}/></section><section className="panel"><div className="panelHead"><div><small>AGING</small><h2>Idade sem movimentação</h2></div></div><Bars data={aging} onClick={d=>setDrawer({title:`Sem movimentação · ${d.label} dias`,rows:ativos.filter(d.fn)})}/></section><section className="panel"><div className="panelHead"><div><small>ESTOQUE</small><h2>Onde estão os processos?</h2></div></div><Bars data={status} onClick={d=>setDrawer({title:d.label,rows:ativos.filter(r=>r.StatusOperacionalAtual===d.label)})}/></section><section className="panel"><div className="panelHead"><div><small>DEMANDA</small><h2>O que mais chega à SEPLAN?</h2></div></div><Bars data={cats} onClick={d=>setDrawer({title:d.label,rows:rows.filter(r=>r.CategoriaFinal===d.label)})}/></section><section className="panel"><div className="panelHead"><div><small>GARGALOS</small><h2>Estoque por responsável</h2></div></div><Bars data={garg} onClick={d=>setDrawer({title:d.label,rows:ativos.filter(r=>r.Responsavel===d.label)})}/></section></div></>
+function groupCount(rows,key,limit=10){
+  const m=new Map(); rows.forEach(r=>{const k=clean(r[key])||'Não identificado';m.set(k,(m.get(k)||0)+1)})
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,limit).map(([label,value])=>({label,value}))
 }
 
-function Critical({rows,setDrawer}){const critical=rows.filter(r=>r.ativo).sort((a,b)=>b.DiasSemMovimento-a.DiasSemMovimento);return <section className="panel"><div className="panelHead"><div><small>AÇÃO</small><h2>Fila Crítica</h2><p>Processos ativos ordenados por tempo sem movimentação.</p></div></div><div className="tableWrap"><table><thead><tr><th>Protocolo</th><th>Categoria</th><th>Responsável</th><th>Status</th><th>Dias s/ mov.</th><th>Prioridade</th></tr></thead><tbody>{critical.slice(0,250).map(r=><tr key={r.ProtocoloID} onClick={()=>setDrawer({title:r.NumeroAnoOriginal,rows:[r]})}><td className="mono">{r.NumeroAnoOriginal}</td><td>{r.CategoriaFinal}</td><td>{r.Responsavel}</td><td>{r.StatusOperacionalAtual}</td><td className={r.DiasSemMovimento>60?'dangerNum':r.DiasSemMovimento>30?'warnNum':''}>{r.DiasSemMovimento}</td><td>{r.Prioridade}</td></tr>)}</tbody></table></div></section>}
-function Radar({rows,setDrawer}){const ativos=rows.filter(r=>r.ativo),cuts=[30,60,90,120].map(n=>({n,rows:ativos.filter(r=>r.DiasSemMovimento>n)}));return <><div className="kpiGrid four">{cuts.map((c,i)=><Kpi key={c.n} label={`Parados >${c.n} d`} value={c.rows.length.toLocaleString('pt-BR')} sub={`${ativos.length?((c.rows.length/ativos.length)*100).toFixed(1):0}% do estoque`} tone={i<1?'blue':i<2?'violet':'red'} onClick={()=>setDrawer({title:`Parados >${c.n} dias`,rows:c.rows})}/>)}</div><div className="grid2"><section className="panel"><div className="panelHead"><div><small>REPRESAMENTO</small><h2>Categorias com maior estoque</h2></div></div><Bars data={groupCount(ativos,'CategoriaFinal',12)} onClick={d=>setDrawer({title:d.label,rows:ativos.filter(r=>r.CategoriaFinal===d.label)})}/></section><section className="panel"><div className="panelHead"><div><small>RESPONSÁVEIS</small><h2>Concentração do estoque</h2></div></div><Bars data={groupCount(ativos,'Responsavel',12)} onClick={d=>setDrawer({title:d.label,rows:ativos.filter(r=>r.Responsavel===d.label)})}/></section></div></>}
+function Header({updated,total}){
+  return <>
+    <div className="brandStripe"><span></span><span></span></div>
+    <header className="topbar">
+      <div className="brandWrap">
+        <img src="/logo-itapoa.png" className="logo" alt="Município de Itapoá" />
+        <div><div className="eyebrow">SECRETARIA DE PLANEJAMENTO</div><h1>Gestão à Vista <span>SEPLAN</span></h1><p>Indicadores operacionais e gerenciais · Protocolos 2025+</p></div>
+      </div>
+      <div className="baseBox"><span>BASE ATUALIZADA</span><strong>{updated||'—'}</strong><small>{total.toLocaleString('pt-BR')} protocolos na base</small></div>
+    </header>
+  </>
+}
 
-function Processes({rows,setDrawer}){const[q,setQ]=useState('');const filtered=useMemo(()=>{const s=q.toLowerCase().trim();if(!s)return rows;return rows.filter(r=>[r.ProtocoloID,r.NumeroAnoOriginal,r.CategoriaFinal,r.Responsavel,r.InscricaoBase,r.StatusOperacionalAtual].some(v=>clean(v).toLowerCase().includes(s)))},[rows,q]);return <section className="panel"><div className="searchHead"><div><small>EXPLORADOR</small><h2>Processos</h2></div><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar protocolo, inscrição, categoria ou responsável"/></div><p className="countLine">{filtered.length.toLocaleString('pt-BR')} registros</p><div className="tableWrap"><table><thead><tr><th>Protocolo</th><th>Abertura</th><th>Categoria</th><th>Status</th><th>Responsável</th><th>Dias s/ mov.</th><th>Inscrição</th></tr></thead><tbody>{filtered.slice(0,400).map(r=><tr key={r.ProtocoloID} onClick={()=>setDrawer({title:r.NumeroAnoOriginal,rows:[r]})}><td className="mono">{r.NumeroAnoOriginal}</td><td>{fmtDate(r.DataAberturaISO)}</td><td>{r.CategoriaFinal}</td><td>{r.StatusOperacionalAtual}</td><td>{r.Responsavel}</td><td>{r.DiasSemMovimento}</td><td className="mono">{r.InscricaoBase||'—'}</td></tr>)}</tbody></table>{filtered.length>400&&<p className="tableNote">Exibindo os primeiros 400 resultados. Refine a busca.</p>}</div></section>}
-function Quality({rows}){const unique=new Set(rows.map(r=>r.ProtocoloID)).size,duplicates=rows.length-unique,high=rows.filter(r=>clean(r.ConfiancaFinalV05)==='ALTA').length,review=rows.filter(r=>clean(r.NecessitaRevisaoFinal)==='SIM').length,inscriptions=rows.filter(r=>clean(r.InscricaoBase)).length,cadReview=rows.filter(r=>clean(r.StatusRevisaoInscricao)==='REVISAR'||clean(r.StatusRevisaoImovel)==='REVISAR').length,cards=[['Protocolos únicos',unique],['Duplicidades',duplicates],['Classificação alta',high],['Classificação pendente',review],['Inscrições identificadas',inscriptions],['Revisão cadastral',cadReview]];return <><div className="qualityGrid">{cards.map(([l,v])=><div className="qualityCard" key={l}><span>{l}</span><strong>{Number(v).toLocaleString('pt-BR')}</strong></div>)}</div><section className="panel prose"><h2>Leitura da qualidade</h2><p>Os indicadores são calculados diretamente do XLSX carregado. Registros em revisão permanecem explicitamente identificados e não são forçados para uma categoria final.</p></section></>}
-function AuditBlock({title,items}){return <div className="auditBlock"><h3>{title}</h3>{items.map(([k,v])=><div className="auditLine" key={k}><span>{k}</span><b>{clean(v)||'—'}</b></div>)}</div>}
-function Audit({rows}){const[q,setQ]=useState('');const match=useMemo(()=>{const s=q.trim().toLowerCase();if(!s)return null;return rows.find(r=>[r.ProtocoloID,r.NumeroAnoOriginal,r.InscricaoBase,r.InscricaoOriginal].some(v=>clean(v).toLowerCase().includes(s)))||null},[rows,q]);return <section className="panel audit"><div className="searchHead"><div><small>RASTREABILIDADE</small><h2>Auditoria do protocolo</h2></div><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Digite protocolo ou inscrição"/></div>{!q&&<div className="empty">Pesquise um protocolo para ver a lógica de classificação.</div>}{q&&!match&&<div className="empty">Nenhum protocolo encontrado.</div>}{match&&<div className="auditGrid"><AuditBlock title="Original" items={[['Protocolo',match.NumeroAnoOriginal],['Subassunto',match.SubassuntoOriginal],['Situação',match.SituacaoAtual],['Abertura',fmtDate(match.DataAberturaISO)],['Último trâmite',fmtDateTime(match.UltimoTramiteDataHoraISO)]]}/><AuditBlock title="Imóvel" items={[['Inscrição original',match.InscricaoOriginal],['Inscrição base',match.InscricaoBase],['Lote original',match.LoteOriginalInscricao],['Lote base',match.LoteBase],['Complemento lote',match.ComplementoLote],['Complemento inscrição',match.ComplementoInscricao],['Origem',match.OrigemInscricao],['Confiança',match.ConfiabilidadeExtracao]]}/><AuditBlock title="Classificação" items={[['Anterior',match.CategoriaAnteriorAprovada],['Candidata',match.CategoriaCandidataV03],['Regra',match.RegraAplicadaV05],['Evidência',match.EvidenciaDecisaoV05],['Final',match.CategoriaFinal],['Decisão',match.DecisaoClassificacaoV05],['Confiança',match.ConfiancaFinalV05],['Revisão',match.NecessitaRevisaoFinal]]}/><AuditBlock title="Estado operacional" items={[['Status',match.StatusOperacionalAtual],['Responsável',match.Responsavel],['Dias sem movimento',match.DiasSemMovimento],['Prioridade',match.Prioridade],['Evidência',match.EvidenciaStatusAtual]]}/></div>}</section>}
+const TABS=['Visão Executiva','Pendências','Processos','Qualidade da Base']
+function Nav({tab,setTab}){return <nav className="tabs">{TABS.map(t=><button key={t} onClick={()=>setTab(t)} className={tab===t?'active':''}>{t}</button>)}</nav>}
+
+function FilterBar({period,setPeriod,category,setCategory,status,setStatus,responsible,setResponsible,categories,statuses,responsibles}){
+  const active=period!=='2026'||category||status||responsible
+  return <div className="filtersPanel">
+    <div className="filterGroup"><label>Período</label><div className="segmented">{['2026','2025','Todos'].map(v=><button key={v} className={period===v?'active':''} onClick={()=>setPeriod(v)}>{v==='Todos'?'2025 + 2026':v}</button>)}</div></div>
+    <div className="filterGroup"><label>Categoria</label><select value={category} onChange={e=>setCategory(e.target.value)}><option value="">Todas</option>{categories.map(x=><option key={x}>{x}</option>)}</select></div>
+    <div className="filterGroup"><label>Status</label><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Todos</option>{statuses.map(x=><option key={x}>{x}</option>)}</select></div>
+    <div className="filterGroup wide"><label>Responsável</label><select value={responsible} onChange={e=>setResponsible(e.target.value)}><option value="">Todos</option>{responsibles.map(x=><option key={x}>{x}</option>)}</select></div>
+    {active&&<button className="clearBtn" onClick={()=>{setPeriod('2026');setCategory('');setStatus('');setResponsible('')}}>Limpar filtros</button>}
+  </div>
+}
+
+function Kpi({label,value,sub,color,icon,onClick}){
+  return <button className={`kpi ${color}`} onClick={onClick}>
+    <div className="kpiIcon">{icon}</div><div className="kpiText"><span>{label}</span><strong>{value}</strong><small>{sub}</small></div>
+  </button>
+}
+
+function Bars({data,onClick,color='blue'}){
+  const max=Math.max(1,...data.map(x=>x.value))
+  return <div className={`bars ${color}`}>{data.map(d=><button className="barRow" key={d.label} onClick={()=>onClick?.(d)}><span className="barLabel" title={d.label}>{d.label}</span><div className="barTrack"><i style={{width:`${(d.value/max)*100}%`}}/></div><b>{d.value.toLocaleString('pt-BR')}</b></button>)}</div>
+}
+
+function FlowChart({data}){
+  const w=820,h=250,p=32,max=Math.max(1,...data.flatMap(d=>[d.in,d.out]))
+  const x=i=>p+i*(w-2*p)/Math.max(1,data.length-1), y=v=>h-p-(v/max)*(h-2*p)
+  const pts=k=>data.map((d,i)=>`${x(i)},${y(d[k])}`).join(' ')
+  return <div className="flow"><svg viewBox={`0 0 ${w} ${h}`}>
+    {[0,.25,.5,.75,1].map((q,i)=><line key={i} x1={p} x2={w-p} y1={p+q*(h-2*p)} y2={p+q*(h-2*p)} className="gridline"/>)}
+    <polyline points={pts('in')} className="line incoming"/><polyline points={pts('out')} className="line outgoing"/>
+    {data.map((d,i)=><g key={d.label}><circle cx={x(i)} cy={y(d.in)} r="4" className="dotIn"/><circle cx={x(i)} cy={y(d.out)} r="4" className="dotOut"/><text x={x(i)} y={h-7} textAnchor="middle">{d.label}</text></g>)}
+  </svg><div className="legend"><span><i className="lg blue"></i>Recebidos</span><span><i className="lg green"></i>Concluídos</span></div></div>
+}
+
+function Threshold({value,setValue}){return <div className="threshold"><span>Parados por mais de</span>{CUTS.map(n=><button key={n} className={value===n?'active':''} onClick={()=>setValue(n)}>{n}d</button>)}</div>}
+
+function Drawer({state,onClose}){
+  if(!state)return null
+  const {title,rows}=state
+  return <div className="overlay" onClick={onClose}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><div><small>DRILL-DOWN</small><h2>{title}</h2><p>{rows.length.toLocaleString('pt-BR')} protocolos</p></div><button onClick={onClose}>×</button></div><div className="tableWrap"><table><thead><tr><th>Protocolo</th><th>Abertura</th><th>Categoria</th><th>Status</th><th>Responsável</th><th>Dias s/ mov.</th><th>Inscrição</th></tr></thead><tbody>{rows.slice(0,600).map(r=><tr key={r.id}><td className="mono">{r.protocolo}</td><td>{fmtDate(r.abertura)}</td><td>{r.categoria}</td><td>{r.status}</td><td>{r.responsavel}</td><td className={r.dias>60?'critical':r.dias>30?'warning':''}>{r.dias}</td><td className="mono">{r.inscricao||'—'}</td></tr>)}</tbody></table>{rows.length>600&&<p className="tableNote">Exibindo os primeiros 600 registros deste recorte.</p>}</div></aside></div>
+}
+
+function ResponsaveisTable({rows,threshold,setDrawer}){
+  const map=new Map()
+  rows.forEach(r=>{const k=r.responsavel||'Não identificado'; if(!map.has(k))map.set(k,[]);map.get(k).push(r)})
+  const data=[...map].map(([name,arr])=>({name,arr,stock:arr.length,cut:arr.filter(r=>r.dias>threshold).length,d60:arr.filter(r=>r.dias>60).length,med:Math.round(median(arr.map(r=>r.dias))) })).sort((a,b)=>b.stock-a.stock).slice(0,12)
+  return <div className="respTable"><div className="respHead"><span>Responsável / gargalo</span><span>Estoque</span><span>&gt;{threshold}d</span><span>&gt;60d</span><span>Mediana</span></div>{data.map(d=><button key={d.name} onClick={()=>setDrawer({title:`Pendências · ${d.name}`,rows:d.arr})}><span title={d.name}>{d.name}</span><b>{d.stock}</b><b className={d.cut?'warning':''}>{d.cut}</b><b className={d.d60?'critical':''}>{d.d60}</b><b>{d.med}d</b></button>)}</div>
+}
+
+function Executive({all,received,concluded,stock,period,threshold,setThreshold,setDrawer}){
+  const durations=concluded.map(r=>daysBetween(r.abertura,r.encerramento)).filter(v=>v!=null)
+  const avg=durations.length?Math.round(mean(durations)):0, med=durations.length?Math.round(median(durations)):0
+  const stopped=stock.filter(r=>r.dias>threshold), pct=stock.length?100*stopped.length/stock.length:0
+  const months=period==='Todos'?[...Array(24)].map((_,i)=>{const y=i<12?2025:2026,m=i%12;return {y,m,label:`${MESES[m]}/${String(y).slice(2)}`}}):MESES.map((m,i)=>({y:Number(period),m:i,label:m}))
+  const flow=months.map(x=>({label:x.label,in:all.filter(r=>yearOf(r.abertura)===x.y&&toDate(r.abertura)?.getMonth()===x.m).length,out:all.filter(r=>yearOf(r.encerramento)===x.y&&toDate(r.encerramento)?.getMonth()===x.m).length}))
+  const aging=[['0–15',r=>r.dias<=15],['16–30',r=>r.dias>=16&&r.dias<=30],['31–60',r=>r.dias>=31&&r.dias<=60],['61–90',r=>r.dias>=61&&r.dias<=90],['91–120',r=>r.dias>=91&&r.dias<=120],['>120',r=>r.dias>120]].map(([label,fn])=>({label,value:stock.filter(fn).length,fn}))
+  const status=groupCount(stock,'status',9), categories=groupCount(received,'categoria',9)
+  return <>
+    <div className="sectionTitle"><div><span>INDICADORES SOLICITADOS</span><h2>Visão executiva</h2></div><Threshold value={threshold} setValue={setThreshold}/></div>
+    <div className="kpiGrid">
+      <Kpi label="Processos recebidos" value={received.length.toLocaleString('pt-BR')} sub={period==='Todos'?'abertos em 2025–2026':`abertos em ${period}`} color="blue" icon="↘" onClick={()=>setDrawer({title:'Processos recebidos',rows:received})}/>
+      <Kpi label="Processos concluídos" value={concluded.length.toLocaleString('pt-BR')} sub={period==='Todos'?'encerrados em 2025–2026':`encerrados em ${period}`} color="green" icon="✓" onClick={()=>setDrawer({title:'Processos concluídos',rows:concluded})}/>
+      <Kpi label="Estoque pendente" value={stock.length.toLocaleString('pt-BR')} sub="processos ativos na base atual" color="orange" icon="▤" onClick={()=>setDrawer({title:'Estoque atual de pendências',rows:stock})}/>
+      <Kpi label="Tempo médio" value={durations.length?`${avg} dias`:'—'} sub={durations.length?`mediana: ${med} dias · ${durations.length.toLocaleString('pt-BR')} concluídos`:'sem encerramentos formais'} color="purple" icon="◷" onClick={()=>setDrawer({title:'Concluídos usados no tempo médio',rows:concluded})}/>
+      <Kpi label={`Parados >${threshold} dias`} value={`${pct.toFixed(1)}%`} sub={`${stopped.length.toLocaleString('pt-BR')} de ${stock.length.toLocaleString('pt-BR')} pendentes`} color="red" icon="!" onClick={()=>setDrawer({title:`Parados há mais de ${threshold} dias`,rows:stopped})}/>
+    </div>
+    <div className="insightRow"><div><span>Saldo do período</span><strong className={received.length-concluded.length>0?'bad':'good'}>{received.length-concluded.length>0?'+':''}{(received.length-concluded.length).toLocaleString('pt-BR')}</strong><small>recebidos − concluídos</small></div><div><span>Estoque crítico &gt;60d</span><strong>{stock.filter(r=>r.dias>60).length.toLocaleString('pt-BR')}</strong><small>{stock.length?`${(100*stock.filter(r=>r.dias>60).length/stock.length).toFixed(1)}% do estoque`:''}</small></div><div><span>Estoque muito crítico &gt;120d</span><strong>{stock.filter(r=>r.dias>120).length.toLocaleString('pt-BR')}</strong><small>{stock.length?`${(100*stock.filter(r=>r.dias>120).length/stock.length).toFixed(1)}% do estoque`:''}</small></div></div>
+    <div className="layout">
+      <section className="panel wide"><div className="panelHead"><div><span>FLUXO MENSAL</span><h3>Entradas × conclusões</h3></div><small>clique nos demais blocos para abrir os protocolos</small></div><FlowChart data={flow}/></section>
+      <section className="panel"><div className="panelHead"><div><span>ENVELHECIMENTO</span><h3>Tempo sem movimentação</h3></div></div><Bars color="warm" data={aging} onClick={d=>setDrawer({title:`Sem movimentação · ${d.label} dias`,rows:stock.filter(d.fn)})}/></section>
+      <section className="panel"><div className="panelHead"><div><span>STATUS OPERACIONAL</span><h3>Onde estão os pendentes?</h3></div></div><Bars color="teal" data={status} onClick={d=>setDrawer({title:d.label,rows:stock.filter(r=>r.status===d.label)})}/></section>
+      <section className="panel"><div className="panelHead"><div><span>DEMANDAS</span><h3>O que mais chega à SEPLAN?</h3></div></div><Bars color="blue" data={categories} onClick={d=>setDrawer({title:d.label,rows:received.filter(r=>r.categoria===d.label)})}/></section>
+      <section className="panel"><div className="panelHead"><div><span>RESPONSABILIDADE</span><h3>Pendências por responsável</h3></div></div><ResponsaveisTable rows={stock} threshold={threshold} setDrawer={setDrawer}/></section>
+    </div>
+  </>
+}
+
+function Pendencias({stock,threshold,setThreshold,setDrawer}){
+  const critical=[...stock].sort((a,b)=>b.dias-a.dias)
+  return <><div className="sectionTitle"><div><span>GESTÃO DA FILA</span><h2>Pendências</h2></div><Threshold value={threshold} setValue={setThreshold}/></div><div className="layout"><section className="panel"><div className="panelHead"><div><span>RESPONSÁVEIS</span><h3>Distribuição do estoque</h3></div></div><ResponsaveisTable rows={stock} threshold={threshold} setDrawer={setDrawer}/></section><section className="panel"><div className="panelHead"><div><span>MAIOR INATIVIDADE</span><h3>Fila crítica</h3></div></div><div className="tableWrap"><table><thead><tr><th>Protocolo</th><th>Categoria</th><th>Responsável</th><th>Dias</th></tr></thead><tbody>{critical.slice(0,250).map(r=><tr key={r.id} onClick={()=>setDrawer({title:r.protocolo,rows:[r]})}><td className="mono">{r.protocolo}</td><td>{r.categoria}</td><td>{r.responsavel}</td><td className={r.dias>60?'critical':r.dias>30?'warning':''}>{r.dias}</td></tr>)}</tbody></table></div></section></div></>
+}
+
+function Processes({rows,setDrawer}){
+  const [q,setQ]=useState('')
+  const result=useMemo(()=>{const s=q.toLowerCase().trim();return !s?rows:rows.filter(r=>[r.protocolo,r.inscricao,r.categoria,r.responsavel,r.status].some(v=>clean(v).toLowerCase().includes(s)))},[rows,q])
+  return <section className="panel full"><div className="searchHead"><div><span>EXPLORADOR</span><h2>Processos</h2></div><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar protocolo, inscrição, categoria, responsável…"/></div><p className="resultCount">{result.length.toLocaleString('pt-BR')} registros</p><div className="tableWrap tall"><table><thead><tr><th>Protocolo</th><th>Abertura</th><th>Categoria</th><th>Status</th><th>Responsável</th><th>Dias s/ mov.</th><th>Inscrição</th></tr></thead><tbody>{result.slice(0,500).map(r=><tr key={r.id} onClick={()=>setDrawer({title:r.protocolo,rows:[r]})}><td className="mono">{r.protocolo}</td><td>{fmtDate(r.abertura)}</td><td>{r.categoria}</td><td>{r.status}</td><td>{r.responsavel}</td><td>{r.dias}</td><td className="mono">{r.inscricao||'—'}</td></tr>)}</tbody></table></div></section>
+}
+
+function Quality({all}){
+  const unique=new Set(all.map(r=>r.id)).size, review=all.filter(r=>r.categoria==='Classificação pendente').length, inscriptions=all.filter(r=>r.inscricao).length
+  const cards=[['Registros da base',all.length,'blue'],['Protocolos únicos',unique,'green'],['Classificação pendente',review,'orange'],['Inscrições identificadas',inscriptions,'purple']]
+  return <><div className="qualityGrid">{cards.map(([l,v,c])=><div key={l} className={`quality ${c}`}><span>{l}</span><strong>{Number(v).toLocaleString('pt-BR')}</strong></div>)}</div><section className="panel full note"><h3>Escopo desta versão</h3><p>O painel usa somente indicadores sustentados pela base atual de protocolos. Diligências, fiscalizações, denúncias respondidas, cumprimento de prazo oficial e projetos públicos serão integrados quando existirem bases próprias e regras validadas.</p></section></>
+}
 
 export default function App(){
-  const[data,setData]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[tab,setTab]=useState('Gestão à Vista'),[year,setYear]=useState('2026'),[category,setCategory]=useState(''),[status,setStatus]=useState(''),[drawer,setDrawer]=useState(null)
-  useEffect(()=>{loadWorkbook().then(setData).catch(e=>setError(e.message)).finally(()=>setLoading(false))},[])
-  const updated=useMemo(()=>data.map(r=>clean(r.UltimoTramiteDataHoraISO)).filter(Boolean).sort().at(-1),[data])
-  const categories=useMemo(()=>[...new Set(data.map(r=>r.CategoriaFinal).filter(Boolean))].sort(),[data])
-  const statuses=useMemo(()=>[...new Set(data.map(r=>r.StatusOperacionalAtual).filter(Boolean))].sort(),[data])
-  const filtered=useMemo(()=>data.filter(r=>{const y=dateOnly(r.DataAberturaISO)?.getFullYear();return(year==='Todos'||String(y)===year)&&(!category||r.CategoriaFinal===category)&&(!status||r.StatusOperacionalAtual===status)}),[data,year,category,status])
-  if(loading)return <div className="loading"><div className="spinner"/><h2>Carregando base SEPLAN…</h2><p>Lendo o XLSX oficial.</p></div>
-  if(error)return <div className="loading error"><h2>Não foi possível carregar o dashboard</h2><p>{error}</p></div>
-  return <div className="app"><Header updated={fmtDateTime(updated)} total={data.length}/><Tabs tab={tab} setTab={setTab}/><main><Filters year={year} setYear={setYear} category={category} setCategory={setCategory} status={status} setStatus={setStatus} categories={categories} statuses={statuses}/>{tab==='Gestão à Vista'&&<Dashboard rows={filtered} setDrawer={setDrawer}/>} {tab==='Fila Crítica'&&<Critical rows={filtered} setDrawer={setDrawer}/>} {tab==='Radar Operacional'&&<Radar rows={filtered} setDrawer={setDrawer}/>} {tab==='Processos'&&<Processes rows={filtered} setDrawer={setDrawer}/>} {tab==='Qualidade'&&<Quality rows={data}/>} {tab==='Auditoria'&&<Audit rows={data}/>}</main><ProcessDrawer rows={drawer?.rows} title={drawer?.title} onClose={()=>setDrawer(null)}/><footer>SEPLAN · Prefeitura Municipal de Itapoá · Dados derivados diretamente do XLSX oficial</footer></div>
+  const [data,setData]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[tab,setTab]=useState('Visão Executiva')
+  const [period,setPeriod]=useState('2026'),[category,setCategory]=useState(''),[status,setStatus]=useState(''),[responsible,setResponsible]=useState(''),[threshold,setThreshold]=useState(30),[drawer,setDrawer]=useState(null)
+  useEffect(()=>{loadData().then(setData).catch(e=>setError(e.message)).finally(()=>setLoading(false))},[])
+  const updated=useMemo(()=>data.map(r=>r.ultimo).filter(Boolean).sort().at(-1),[data])
+  const common=useMemo(()=>data.filter(r=>(!category||r.categoria===category)&&(!status||r.status===status)&&(!responsible||r.responsavel===responsible)),[data,category,status,responsible])
+  const received=useMemo(()=>common.filter(r=>period==='Todos'||String(yearOf(r.abertura))===period),[common,period])
+  const concluded=useMemo(()=>common.filter(r=>r.encerradoFormal&&(period==='Todos'||String(yearOf(r.encerramento))===period)),[common,period])
+  const stock=useMemo(()=>common.filter(r=>r.ativo),[common])
+  const categories=useMemo(()=>[...new Set(data.map(r=>r.categoria))].sort(),[data]), statuses=useMemo(()=>[...new Set(data.map(r=>r.status))].sort(),[data]), responsibles=useMemo(()=>[...new Set(data.map(r=>r.responsavel))].sort(),[data])
+  if(loading)return <div className="loading"><div className="spinner"></div><h2>Carregando Gestão à Vista…</h2><p>Preparando os indicadores da base SEPLAN.</p></div>
+  if(error)return <div className="loading error"><h2>Falha ao carregar os dados</h2><p>{error}</p></div>
+  return <div className="app"><Header updated={fmtDateTime(updated)} total={data.length}/><Nav tab={tab} setTab={setTab}/><main><FilterBar period={period} setPeriod={setPeriod} category={category} setCategory={setCategory} status={status} setStatus={setStatus} responsible={responsible} setResponsible={setResponsible} categories={categories} statuses={statuses} responsibles={responsibles}/>{tab==='Visão Executiva'&&<Executive all={common} received={received} concluded={concluded} stock={stock} period={period} threshold={threshold} setThreshold={setThreshold} setDrawer={setDrawer}/>} {tab==='Pendências'&&<Pendencias stock={stock} threshold={threshold} setThreshold={setThreshold} setDrawer={setDrawer}/>} {tab==='Processos'&&<Processes rows={common} setDrawer={setDrawer}/>} {tab==='Qualidade da Base'&&<Quality all={data}/>}</main><Drawer state={drawer} onClose={()=>setDrawer(null)}/><footer>SEPLAN · Município de Itapoá · Fonte oficial: base XLSX de protocolos 2025+</footer></div>
 }
