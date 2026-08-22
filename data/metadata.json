@@ -1,0 +1,58 @@
+{
+  "schema_version": 3,
+  "dataset": "SEPLAN 2025+",
+  "source_rows": 6957,
+  "years": {
+    "2025": 4165,
+    "2026": 2792
+  },
+  "source_updated_at": "2026-08-20 18:58:21",
+  "generated_from": [
+    "SEPLAN_2025_MAIS_PROCESSADO.csv",
+    "SEPLAN_BASE_REFINADA_2025_MAIS_V03.csv"
+  ],
+  "privacy": {
+    "excluded_fields": [
+      "RequerenteNomeRazao",
+      "RequerenteCPFCNPJ",
+      "ResponsavelCPFCNPJ",
+      "ObservacaoAbertura",
+      "UltimoTramiteObservacao"
+    ],
+    "note": "Dataset derivado para dashboard; não contém CPF/CNPJ, requerente nem observações livres."
+  },
+  "default_period": {
+    "from": "2026-01-01",
+    "to": "2026-08-20"
+  },
+  "default_threshold_days": 30,
+  "artifact": {
+    "storage": "gzip+base64-chunks",
+    "format": "columnar-v2",
+    "parts": [
+      "part-00.b64",
+      "part-01.b64",
+      "part-02.b64",
+      "part-03.b64",
+      "part-04.b64",
+      "part-05.b64",
+      "part-06.b64",
+      "part-07.b64",
+      "part-08.b64",
+      "part-09.b64",
+      "part-10.b64",
+      "part-11.b64",
+      "part-12.b64",
+      "part-13.b64",
+      "part-14.b64",
+      "part-15.b64",
+      "part-16.b64",
+      "part-17.b64"
+    ],
+    "gzip_bytes": 77021,
+    "gzip_sha256": "537cbf3b23f1361652f0df1044f2dbb0ab7febbf75fa517bfa85529fcb4ced6d",
+    "base64_chars": 102696,
+    "note": "Transporte columnar único, sem PII; checksum e invariantes validados pelo backend antes de servir.",
+    "directory": "transport"
+  }
+}
