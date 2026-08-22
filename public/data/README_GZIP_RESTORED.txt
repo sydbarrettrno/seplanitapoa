@@ -1,0 +1,1 @@
+Restauração do arquivo GZIP em andamento.
