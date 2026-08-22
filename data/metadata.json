@@ -29,12 +29,23 @@
   },
   "default_threshold_days": 30,
   "artifact": {
-    "storage": "gzip",
+    "storage": "gzip+base64-chunks",
     "format": "public-compact-v6",
-    "file": "safe_transport.json.gz",
     "gzip_bytes": 48658,
     "gzip_sha256": "519241b5ddb637fc3d2057b1bfb6abd7f6e4ba7a373f98814755d97ff1c1c806",
     "date_encoding": "days since 2025-01-01; -1 = null",
-    "note": "Transporte sanitizado. Gargalo e dias sem movimento são derivados no backend; não há nomes, inscrição, observações ou identificadores pessoais."
+    "note": "Transporte sanitizado em partes base64. Gargalo e dias sem movimento são derivados no backend; não há nomes, inscrição, observações ou identificadores pessoais.",
+    "directory": "safe_chunks",
+    "parts": [
+      "part-00",
+      "part-01",
+      "part-02-03",
+      "part-04-05",
+      "part-06",
+      "part-07",
+      "part-08-09",
+      "part-10"
+    ],
+    "base64_chars": 64880
   }
 }

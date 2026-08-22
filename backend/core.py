@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import gzip
 import hashlib
 import json
@@ -182,12 +183,16 @@ def metadata() -> dict[str, Any]:
 @lru_cache(maxsize=1)
 def load_rows() -> list[dict[str, Any]]:
     artifact = metadata().get("artifact", {})
-    filename = str(artifact.get("file", "safe_transport.json.gz"))
-    path = DATA_DIR / filename
-    if not path.is_file():
-        raise RuntimeError(f"Carga bloqueada: artefato ausente: {filename}.")
+    parts = artifact.get("parts", [])
+    directory = DATA_DIR / str(artifact.get("directory", "safe_chunks"))
+    if not parts or not directory.is_dir():
+        raise RuntimeError("Carga bloqueada: transporte sanitizado ausente.")
+    try:
+        encoded = "".join((directory / str(name)).read_text(encoding="ascii") for name in parts)
+        compressed = base64.b64decode(encoded, validate=True)
+    except Exception as exc:
+        raise RuntimeError("Carga bloqueada: transporte base64 inválido.") from exc
 
-    compressed = path.read_bytes()
     expected_sha = str(artifact.get("gzip_sha256", "")).strip().lower()
     if expected_sha and hashlib.sha256(compressed).hexdigest() != expected_sha:
         raise RuntimeError("Carga bloqueada: checksum do transporte diverge dos metadados.")
