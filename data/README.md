@@ -1,7 +1,7 @@
-# Dataset derivado do dashboard
+# Dataset sanitizado do dashboard
 
-O backend carrega `data/transport/part-*.b64`, que em conjunto formam o dataset derivado em formato columnar v2, comprimido em GZIP e codificado em Base64.
+O repositório público contém apenas uma visão derivada e sanitizada em `data/safe_transport.json.gz`.
 
-`data/metadata.json` registra a ordem das partes, o tamanho e o SHA-256 do GZIP. Antes de responder qualquer indicador, o backend valida Base64, checksum, descompressão, total de registros, unicidade de `ProtocoloID`, coerência temporal e ausência de campos pessoais proibidos.
+O transporte guarda somente números de protocolo, datas codificadas como deslocamento, macroprocesso, categoria e status operacional. Não publica nomes de requerentes/responsáveis, CPF/CNPJ, observações livres nem inscrição imobiliária exata. O gargalo exibido é derivado determinísticamente do status pelo backend.
 
-O navegador não acessa o dataset bruto. A exposição ocorre somente pela API, com os campos necessários ao dashboard e sem CPF/CNPJ, requerente ou observações livres.
+`data/metadata.json` registra o tamanho e o SHA-256 do artefato GZIP. Antes de responder indicadores, o backend valida checksum, total de registros, unicidade de `ProtocoloID`, coerência temporal e ausência dos campos proibidos.

@@ -1,6 +1,6 @@
 {
-  "schema_version": 3,
-  "dataset": "SEPLAN 2025+",
+  "schema_version": 6,
+  "dataset": "SEPLAN 2025+ — visão pública sanitizada",
   "source_rows": 6957,
   "years": {
     "2025": 4165,
@@ -17,9 +17,11 @@
       "RequerenteCPFCNPJ",
       "ResponsavelCPFCNPJ",
       "ObservacaoAbertura",
-      "UltimoTramiteObservacao"
+      "UltimoTramiteObservacao",
+      "ResponsavelGargalo",
+      "Inscricao"
     ],
-    "note": "Dataset derivado para dashboard; não contém CPF/CNPJ, requerente nem observações livres."
+    "note": "Dataset sanitizado para repositório público: não contém nomes de requerentes/responsáveis, CPF/CNPJ, observações livres nem inscrição imobiliária exata. O gargalo exibido é categoria operacional derivada do status."
   },
   "default_period": {
     "from": "2026-01-01",
@@ -27,32 +29,12 @@
   },
   "default_threshold_days": 30,
   "artifact": {
-    "storage": "gzip+base64-chunks",
-    "format": "columnar-v2",
-    "parts": [
-      "part-00.b64",
-      "part-01.b64",
-      "part-02.b64",
-      "part-03.b64",
-      "part-04.b64",
-      "part-05.b64",
-      "part-06.b64",
-      "part-07.b64",
-      "part-08.b64",
-      "part-09.b64",
-      "part-10.b64",
-      "part-11.b64",
-      "part-12.b64",
-      "part-13.b64",
-      "part-14.b64",
-      "part-15.b64",
-      "part-16.b64",
-      "part-17.b64"
-    ],
-    "gzip_bytes": 77021,
-    "gzip_sha256": "537cbf3b23f1361652f0df1044f2dbb0ab7febbf75fa517bfa85529fcb4ced6d",
-    "base64_chars": 102696,
-    "note": "Transporte columnar único, sem PII; checksum e invariantes validados pelo backend antes de servir.",
-    "directory": "transport"
+    "storage": "gzip",
+    "format": "public-compact-v6",
+    "file": "safe_transport.json.gz",
+    "gzip_bytes": 48658,
+    "gzip_sha256": "519241b5ddb637fc3d2057b1bfb6abd7f6e4ba7a373f98814755d97ff1c1c806",
+    "date_encoding": "days since 2025-01-01; -1 = null",
+    "note": "Transporte sanitizado. Gargalo e dias sem movimento são derivados no backend; não há nomes, inscrição, observações ou identificadores pessoais."
   }
 }

@@ -135,7 +135,6 @@ function renderRecords(records) {
       <td>${esc(r.status)}</td>
       <td>${esc(r.owner)}</td>
       <td class="${cls}">${d == null ? '—' : `${fmt(d)} d`}</td>
-      <td class="mono">${esc(r.inscription || '—')}</td>
     </tr>`;
   }).join('');
   $('prevPage').disabled = records.offset <= 0;

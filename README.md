@@ -7,7 +7,7 @@ Dashboard institucional da Secretaria de Planejamento de Itapoá-SC para acompan
 - **Frontend:** HTML + CSS + JavaScript nativos, sem framework e sem etapa de build.
 - **Backend:** Python padrão em `api/index.py`, compatível com Vercel Python Functions.
 - **Regra de negócio:** `backend/core.py` concentra filtros, métricas, auditoria e drill-down.
-- **Dados publicados:** `data/transport/part-*.b64` (GZIP codificado em Base64, validado por checksum), derivado e sem CPF/CNPJ, requerente ou observações livres.
+- **Dados publicados:** `data/safe_transport.json.gz`, visão derivada e sanitizada, sem nomes de pessoas/empresas, CPF/CNPJ, observações livres ou inscrição imobiliária exata.
 - **Deploy:** um único projeto Vercel; frontend e API no mesmo domínio.
 
 Não existe dependência de Node/npm para executar o dashboard localmente.

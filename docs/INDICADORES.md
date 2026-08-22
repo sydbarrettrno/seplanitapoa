@@ -9,7 +9,7 @@
 | KPI03 | Estoque pendente | Posição atual: `DataEncerramento` vazia e `SituacaoAtual` não terminal. O filtro de período não reconstrói estoque histórico. |
 | KPI04 | Tempo de tramitação | `DataEncerramento - DataAbertura` dos concluídos elegíveis no período; mediana, média e P90. |
 | KPI05 | % parados > X dias | Estoque com `DiasSemMovimento > X` / estoque elegível. X configurável em 15/30/60/90/120 dias no frontend. |
-| KPI11 | Pendências por responsável/setor | Ranking do `ResponsavelGargalo`; tratado como gargalo operacional, não como responsável formal. |
+| KPI11 | Pendências por setor/gargalo operacional | Categoria operacional derivada de `StatusOperacional`; nomes de pessoas/empresas não são publicados. |
 
 ## Não publicar como número ainda
 
@@ -21,6 +21,6 @@
 
 ## Terminalidade para estoque
 
-São terminais para a posição atual: `ENCERRADO`, `ARQUIVADO`, `CANCELADO`, `CONCLUÍDO` e `CONCLUIDO`.
+São terminais para a posição atual no modelo publicado: `Encerrado administrativo`, `Arquivado` e `Cancelado`.
 
 A produção do período continua exigindo `DataEncerramento` formal.

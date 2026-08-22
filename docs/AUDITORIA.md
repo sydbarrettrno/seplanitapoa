@@ -7,7 +7,7 @@ Critérios bloqueantes atuais:
 1. `ProtocoloID` obrigatório e único.
 2. Último trâmite não pode ser anterior à abertura.
 3. Encerramento não pode ser anterior à abertura.
-4. O dataset de dashboard não pode conter CPF/CNPJ, nome do requerente ou observações livres.
+4. O dataset público não pode conter CPF/CNPJ, nome do requerente/responsável, observações livres ou inscrição imobiliária exata.
 5. O total carregado deve coincidir com `data/metadata.json`.
 
 Base derivada atual:

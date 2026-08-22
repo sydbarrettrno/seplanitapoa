@@ -1,1 +1,0 @@
-Marcador temporário de correção do artefato GZIP. Pode ser removido depois da validação.

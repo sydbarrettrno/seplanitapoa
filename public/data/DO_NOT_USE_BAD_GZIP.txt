@@ -1,1 +1,0 @@
-O artefato protocolos.json.gz anterior estava corrompido. Este marcador acompanha a restauração do blob binário íntegro.

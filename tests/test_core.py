@@ -37,8 +37,9 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(all(x["category"] == "Habite-se" for x in d["records"]["items"]))
 
     def test_pii_not_in_dataset_schema(self):
-        forbidden = {"RequerenteNomeRazao", "RequerenteCPFCNPJ", "ObservacaoAbertura", "UltimoTramiteObservacao"}
+        forbidden = {"RequerenteNomeRazao", "RequerenteCPFCNPJ", "ObservacaoAbertura", "UltimoTramiteObservacao", "ResponsavelGargalo", "Inscricao"}
         self.assertFalse(forbidden.intersection(load_rows()[0].keys()))
+
 
     def test_recordsets_and_thresholds(self):
         base = dashboard(query_from_params({"limit": "500"}))
@@ -73,6 +74,21 @@ class CoreTests(unittest.TestCase):
         for kpi in ("KPI06", "KPI07", "KPI08", "KPI09", "KPI10"):
             self.assertNotEqual(coverage[kpi]["status"], "DISPONÍVEL")
         self.assertEqual(coverage["KPI11"]["status"], "PARCIAL")
+
+    def test_public_bottleneck_is_categorical(self):
+        allowed = {
+            "SEPLAN / Tramitação",
+            "SEPLAN / Fiscalização",
+            "SEPLAN / Análise técnica",
+            "Exigência externa / Responsável técnico",
+            "Aguardando retirada",
+            "Não aplicável",
+            "Aguardando pagamento",
+            "SEPLAN / Revisão",
+        }
+        rows = load_rows()
+        self.assertTrue({r["GargaloOperacional"] for r in rows}.issubset(allowed))
+        self.assertTrue(all("Inscricao" not in r and "ResponsavelGargalo" not in r for r in rows))
 
 
 if __name__ == "__main__":

@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import base64
 import gzip
 import hashlib
-import io
 import json
 import math
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
@@ -17,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 META_PATH = DATA_DIR / "metadata.json"
 
-TERMINAL_SITUATIONS = {"ENCERRADO", "ARQUIVADO", "CANCELADO", "CONCLUÍDO", "CONCLUIDO"}
+TERMINAL_STATUSES = {"ENCERRADO ADMINISTRATIVO", "ARQUIVADO", "CANCELADO"}
 AGING_BANDS = (
     ("0–15", 0, 15),
     ("16–30", 16, 30),
@@ -33,6 +31,8 @@ FORBIDDEN_KEYS = {
     "ResponsavelCPFCNPJ",
     "ObservacaoAbertura",
     "UltimoTramiteObservacao",
+    "ResponsavelGargalo",
+    "Inscricao",
 }
 
 INDICATOR_COVERAGE = [
@@ -46,9 +46,8 @@ INDICATOR_COVERAGE = [
     {"id": "KPI08", "name": "Fiscalizações realizadas", "status": "FONTE NÃO INTEGRADA", "reason": "Status de fiscalização não comprova ato executado com data."},
     {"id": "KPI09", "name": "Denúncias recebidas/respondidas", "status": "TAXONOMIA PENDENTE", "reason": "A base ainda combina Denúncia / Fiscalização."},
     {"id": "KPI10", "name": "Projetos públicos por etapa", "status": "BASE COMPLEMENTAR", "reason": "Protocolo não representa carteira de projetos."},
-    {"id": "KPI11", "name": "Pendências por responsável/setor", "status": "PARCIAL", "reason": "Disponível como gargalo operacional inferido; não equivale ao responsável formal."},
+    {"id": "KPI11", "name": "Pendências por setor/gargalo operacional", "status": "PARCIAL", "reason": "Derivado do status operacional; nomes de pessoas/empresas não são publicados."},
 ]
-
 
 @dataclass(frozen=True)
 class Query:
@@ -82,7 +81,7 @@ def _clean(value: Any) -> str:
 
 
 def _is_terminal(row: dict[str, Any]) -> bool:
-    return _clean(row.get("SituacaoAtual")).upper() in TERMINAL_SITUATIONS
+    return _clean(row.get("StatusOperacional")).upper() in TERMINAL_STATUSES
 
 
 def _is_stock(row: dict[str, Any]) -> bool:
@@ -183,79 +182,88 @@ def metadata() -> dict[str, Any]:
 @lru_cache(maxsize=1)
 def load_rows() -> list[dict[str, Any]]:
     artifact = metadata().get("artifact", {})
-    part_names = artifact.get("parts") or []
-    if not part_names:
-        raise RuntimeError("Carga bloqueada: manifesto do dataset sem partes.")
+    filename = str(artifact.get("file", "safe_transport.json.gz"))
+    path = DATA_DIR / filename
+    if not path.is_file():
+        raise RuntimeError(f"Carga bloqueada: artefato ausente: {filename}.")
 
-    storage_dir = DATA_DIR / str(artifact.get("directory", "."))
-    encoded = "".join((storage_dir / name).read_text(encoding="ascii").strip() for name in part_names)
-    try:
-        compressed = base64.b64decode(encoded, validate=True)
-    except Exception as exc:
-        raise RuntimeError("Carga bloqueada: artefato Base64 inválido.") from exc
-
+    compressed = path.read_bytes()
     expected_sha = str(artifact.get("gzip_sha256", "")).strip().lower()
     if expected_sha and hashlib.sha256(compressed).hexdigest() != expected_sha:
-        raise RuntimeError("Carga bloqueada: checksum do dataset diverge dos metadados.")
+        raise RuntimeError("Carga bloqueada: checksum do transporte diverge dos metadados.")
+    expected_bytes = int(artifact.get("gzip_bytes", len(compressed)))
+    if len(compressed) != expected_bytes:
+        raise RuntimeError("Carga bloqueada: tamanho do transporte diverge dos metadados.")
 
     try:
-        with gzip.GzipFile(fileobj=io.BytesIO(compressed), mode="rb") as gz:
-            payload = json.loads(gz.read().decode("utf-8"))
+        raw = gzip.decompress(compressed)
+        payload = json.loads(raw.decode("utf-8"))
     except Exception as exc:
-        raise RuntimeError("Carga bloqueada: dataset comprimido inválido.") from exc
+        raise RuntimeError("Carga bloqueada: dataset compactado inválido.") from exc
 
-    if artifact.get("format") == "columnar-v2":
-        if not isinstance(payload, dict) or payload.get("v") != 2:
-            raise RuntimeError("Dataset inválido: transporte columnar v2 esperado.")
-        d, c = payload.get("d", {}), payload.get("c", {})
-        count = len(c.get("n", []))
-        required = ("n", "y", "o", "m", "c", "s", "x", "g", "t", "w", "p", "i", "r", "q")
-        if any(len(c.get(k, [])) != count for k in required):
-            raise RuntimeError("Dataset inválido: colunas com comprimentos divergentes.")
+    if payload.get("v") != 6 or not isinstance(payload.get("d"), dict) or not isinstance(payload.get("c"), dict):
+        raise RuntimeError("Dataset inválido: transporte público v6 esperado.")
+    d = payload["d"]
+    columns = payload["c"]
 
-        def iso(v: Any) -> str:
-            if not v:
-                return ""
-            s = str(int(v))
-            if len(s) != 8:
-                return ""
-            return f"{s[:4]}-{s[4:6]}-{s[6:8]}"
+    required = ("n", "y", "o", "m", "c", "x", "g", "t")
+    count = len(columns.get("n", []))
+    if count == 0 or any(len(columns.get(k, [])) != count for k in required):
+        raise RuntimeError("Dataset inválido: colunas com comprimentos divergentes.")
 
-        def dv(name: str, idx: int) -> str:
-            values = d.get(name, [])
-            try:
-                return values[idx]
-            except (IndexError, TypeError):
-                raise RuntimeError(f"Dataset inválido: índice fora do dicionário {name}.")
+    from datetime import timedelta
+    base_date = date(2025, 1, 1)
+    source_ref = _as_date(metadata().get("source_updated_at")) or date.today()
 
-        rows = []
-        for j in range(count):
-            year = 2025 + int(c["y"][j])
-            number = int(c["n"][j])
-            rows.append({
-                "ProtocoloID": f"{year}-{number}",
-                "NumeroAnoOriginal": f"{number}/{year}",
-                "ProtocoloAno": year,
-                "DataAbertura": iso(c["o"][j]),
-                "UltimoTramiteDataHora": iso(c["m"][j]),
-                "DataEncerramento": iso(c["c"][j]),
-                "SituacaoAtual": dv("SituacaoAtual", int(c["s"][j])),
-                "Macroprocesso": dv("Macroprocesso", int(c["x"][j])),
-                "Categoria": dv("Categoria", int(c["g"][j])),
-                "StatusOperacional": dv("StatusOperacional", int(c["t"][j])),
-                "ResponsavelGargalo": dv("ResponsavelGargalo", int(c["w"][j])),
-                "Prioridade": dv("Prioridade", int(c["p"][j])),
-                "DiasSemMovimento": int(c["i"][j]),
-                "FaixaInatividade": "",
-                "Inscricao": c["r"][j] or "",
-                "NecessitaRevisao": "SIM" if int(c["q"][j]) else "NÃO",
-                "ConfiancaCategoria": None,
-            })
-    else:
-        rows = payload
+    def iso(v: Any) -> str:
+        try:
+            offset = int(v)
+        except (TypeError, ValueError):
+            return ""
+        if offset < 0:
+            return ""
+        return (base_date + timedelta(days=offset)).isoformat()
 
-    if not isinstance(rows, list):
-        raise RuntimeError("Dataset inválido: esperado array JSON.")
+    bottleneck_by_status = {
+        "Em tramitação": "SEPLAN / Tramitação",
+        "Fiscalização / vistoria": "SEPLAN / Fiscalização",
+        "Em análise técnica": "SEPLAN / Análise técnica",
+        "Exigência / pendência": "Exigência externa / Responsável técnico",
+        "Apto / aguardando retirada": "Aguardando retirada",
+        "Encerrado administrativo": "Não aplicável",
+        "Aguardando pagamento": "Aguardando pagamento",
+        "Paralisado / revisar": "SEPLAN / Revisão",
+        "Cancelado": "Não aplicável",
+        "Arquivado": "Não aplicável",
+    }
+
+    def dv(name: str, idx: int) -> str:
+        values = d.get(name, [])
+        try:
+            return values[idx]
+        except (IndexError, TypeError):
+            raise RuntimeError(f"Dataset inválido: índice fora do dicionário {name}.")
+
+    rows = []
+    for j in range(count):
+        year = 2025 + int(columns["y"][j])
+        number = int(columns["n"][j])
+        status = dv("StatusOperacional", int(columns["t"][j]))
+        moved = int(columns["m"][j])
+        rows.append({
+            "ProtocoloID": f"{year}-{number}",
+            "NumeroAnoOriginal": f"{number}/{year}",
+            "ProtocoloAno": year,
+            "DataAbertura": iso(columns["o"][j]),
+            "UltimoTramiteDataHora": iso(moved),
+            "DataEncerramento": iso(columns["c"][j]),
+            "Macroprocesso": dv("Macroprocesso", int(columns["x"][j])),
+            "Categoria": dv("Categoria", int(columns["g"][j])),
+            "StatusOperacional": status,
+            "GargaloOperacional": bottleneck_by_status.get(status, "SEPLAN / Tramitação"),
+            "DiasSemMovimento": max(0, (source_ref - (base_date + timedelta(days=moved))).days) if moved >= 0 else -1,
+        })
+
     audit = _audit_rows(rows)
     if not audit["ok"]:
         raise RuntimeError(f"Carga bloqueada pela auditoria: {audit}")
@@ -318,14 +326,14 @@ def _matches_scope(row: dict[str, Any], q: Query) -> bool:
         return False
     if q.status and _clean(row.get("StatusOperacional")) != q.status:
         return False
-    if q.owner and _clean(row.get("ResponsavelGargalo")) != q.owner:
+    if q.owner and _clean(row.get("GargaloOperacional")) != q.owner:
         return False
     if q.macro and _clean(row.get("Macroprocesso")) != q.macro:
         return False
     if q.search:
         hay = " | ".join(
             _clean(row.get(k)).casefold()
-            for k in ("ProtocoloID", "NumeroAnoOriginal", "Inscricao", "Categoria", "ResponsavelGargalo")
+            for k in ("ProtocoloID", "NumeroAnoOriginal", "Categoria", "GargaloOperacional")
         )
         if q.search not in hay:
             return False
@@ -342,13 +350,8 @@ def _record(row: dict[str, Any]) -> dict[str, Any]:
         "category": row.get("Categoria"),
         "macroprocess": row.get("Macroprocesso"),
         "status": row.get("StatusOperacional"),
-        "situation": row.get("SituacaoAtual"),
-        "owner": row.get("ResponsavelGargalo"),
-        "priority": row.get("Prioridade"),
+        "owner": row.get("GargaloOperacional"),
         "days_without_movement": row.get("DiasSemMovimento") if int(row.get("DiasSemMovimento", -1)) >= 0 else None,
-        "inscription": row.get("Inscricao") or None,
-        "needs_review": str(row.get("NecessitaRevisao", "NÃO")).upper() == "SIM",
-        "category_confidence": row.get("ConfiancaCategoria"),
     }
 
 
@@ -410,7 +413,7 @@ def dashboard(query: Query) -> dict[str, Any]:
     options = {
         "categories": sorted({_clean(r.get("Categoria")) for r in all_rows if _clean(r.get("Categoria"))}, key=str.casefold),
         "statuses": sorted({_clean(r.get("StatusOperacional")) for r in all_rows if _clean(r.get("StatusOperacional"))}, key=str.casefold),
-        "owners": sorted({_clean(r.get("ResponsavelGargalo")) for r in all_rows if _clean(r.get("ResponsavelGargalo"))}, key=str.casefold),
+        "owners": sorted({_clean(r.get("GargaloOperacional")) for r in all_rows if _clean(r.get("GargaloOperacional"))}, key=str.casefold),
         "macroprocesses": sorted({_clean(r.get("Macroprocesso")) for r in all_rows if _clean(r.get("Macroprocesso"))}, key=str.casefold),
     }
 
@@ -450,7 +453,7 @@ def dashboard(query: Query) -> dict[str, Any]:
             "flow": list(flow.values()),
             "aging": aging,
             "categories": _top_counts(stock, "Categoria", 12),
-            "owners": _top_counts(stock, "ResponsavelGargalo", 12),
+            "owners": _top_counts(stock, "GargaloOperacional", 12),
             "statuses": _top_counts(stock, "StatusOperacional", 12),
         },
         "records": {

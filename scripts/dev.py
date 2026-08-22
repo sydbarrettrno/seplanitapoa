@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
 import sys
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -28,18 +29,7 @@ class DevHandler(SimpleHTTPRequestHandler):
             try:
                 params = _flatten(parsed.query)
                 action = params.pop("action", "dashboard")
-                if action == "health":
-                    payload = health()
-                elif action == "dashboard":
-                    payload = dashboard(query_from_params(params))
-                else:
-                    body = json.dumps({"ok": False, "error": "Ação inválida."}, ensure_ascii=False).encode("utf-8")
-                    self.send_response(400)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header("Content-Length", str(len(body)))
-                    self.end_headers()
-                    self.wfile.write(body)
-                    return
+                payload = health() if action == "health" else dashboard(query_from_params(params))
                 body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
