@@ -1,21 +1,8 @@
-# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Ambientes locais
+*.py[cod]
+.pytest_cache/
 .venv/
-**/.venv/
-
-# Saídas geradas pelo motor CAD
-apps/motor-cad/output/*
-apps/motor-cad/reports/*
-!apps/motor-cad/output/.gitkeep
-!apps/motor-cad/reports/.gitkeep
-
-# Temporários
-*.log
-*.tmp
+venv/
+.vercel/
 .DS_Store
 Thumbs.db
