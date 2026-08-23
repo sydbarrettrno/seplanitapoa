@@ -83,7 +83,7 @@
       </div>
 
       <div class="grid-2 exec-bottlenecks">
-        ${barPanel('Estoque por categoria', data.charts.categories, COLORS.orange, 'category')}
+        ${barPanel('Estoque por status operacional', data.charts.statuses, COLORS.purple, 'status')}
         ${barPanel('Pendências por gargalo operacional', data.charts.owners, COLORS.amber, 'owner')}
       </div>
 
