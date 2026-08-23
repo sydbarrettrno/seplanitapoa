@@ -4,119 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>SEPLAN | Gestão à Vista</title>
+  <meta name="theme-color" content="#0f2740">
+  <title>SEPLAN | Indicadores de Gestão</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <div class="top-stripe"></div>
-  <header class="site-header">
-    <div>
-      <div class="eyebrow">SECRETARIA DE PLANEJAMENTO · ITAPOÁ/SC</div>
-      <h1>SEPLAN <span>| Gestão à Vista</span></h1>
-      <p>Processos, desempenho e capacidade operacional — base 2025+</p>
-    </div>
-    <div class="base-card" aria-live="polite">
-      <span>Base atualizada</span>
-      <strong id="updatedAt">—</strong>
-      <small id="baseCount">Carregando…</small>
-    </div>
-  </header>
-
-  <main class="page-shell">
-    <section class="filters" aria-label="Filtros do dashboard">
-      <label><span>Período inicial</span><input id="from" type="date" value="2026-01-01"></label>
-      <label><span>Período final</span><input id="to" type="date" value="2026-08-20"></label>
-      <label><span>Macroprocesso</span><select id="macro"><option value="">Todos</option></select></label>
-      <label><span>Categoria</span><select id="category"><option value="">Todas</option></select></label>
-      <label><span>Status</span><select id="status"><option value="">Todos</option></select></label>
-      <label><span>Gargalo operacional</span><select id="owner"><option value="">Todos</option></select></label>
-      <label class="search"><span>Busca</span><input id="q" type="search" placeholder="Protocolo"></label>
-      <button id="reset" class="btn ghost" type="button">Limpar filtros</button>
-    </section>
-
-    <section id="loading" class="notice loading">Carregando indicadores…</section>
-    <section id="fatal" class="notice error hidden" role="alert"></section>
-
-    <div id="dashboard" class="hidden">
-      <section class="section-heading">
-        <div><div class="eyebrow">INDICADORES P0</div><h2>Visão executiva</h2></div>
-        <div class="threshold" aria-label="Limite de processos parados">
-          <span>Parado há mais de:</span>
-          <button type="button" data-threshold="15">15d</button>
-          <button type="button" data-threshold="30" class="active">30d</button>
-          <button type="button" data-threshold="60">60d</button>
-          <button type="button" data-threshold="90">90d</button>
-          <button type="button" data-threshold="120">120d</button>
-        </div>
-      </section>
-
-      <section class="kpi-grid">
-        <button class="kpi blue" data-recordset="received" type="button"><span>Processos recebidos</span><strong id="kReceived">—</strong><small>aberturas formais no período</small></button>
-        <button class="kpi green" data-recordset="concluded" type="button"><span>Processos concluídos</span><strong id="kConcluded">—</strong><small>DataEncerramento no período</small></button>
-        <button class="kpi orange" data-recordset="stock" type="button"><span>Estoque pendente</span><strong id="kStock">—</strong><small>posição atual da base</small></button>
-        <button class="kpi purple" type="button"><span>Tempo de tramitação</span><strong id="kMedian">—</strong><small id="kTurnaroundSub">mediana dos concluídos</small></button>
-        <button class="kpi red" data-recordset="stopped" type="button"><span id="kStoppedLabel">Parados &gt; 30 dias</span><strong id="kStopped">—</strong><small id="kStoppedSub">—</small></button>
-      </section>
-
-      <section class="insight-grid">
-        <article><span>Saldo do período</span><strong id="balance">—</strong><small>recebidos − concluídos</small></article>
-        <article><span>Taxa de conclusão</span><strong id="completionRate">—</strong><small>concluídos / recebidos</small></article>
-        <article><span>Média de tramitação</span><strong id="meanDays">—</strong><small>concluídos no período</small></article>
-        <article><span>P90 de tramitação</span><strong id="p90Days">—</strong><small>90% concluem até este tempo</small></article>
-      </section>
-
-      <section class="dashboard-grid">
-        <article class="panel wide">
-          <div class="panel-head"><div><div class="eyebrow">FLUXO MENSAL</div><h3>Recebidos × concluídos</h3></div><div class="legend"><span class="dot blue-dot"></span>Recebidos <span class="dot green-dot"></span>Concluídos</div></div>
-          <canvas id="flowChart" height="300"></canvas>
-        </article>
-        <article class="panel">
-          <div class="panel-head"><div><div class="eyebrow">ESTOQUE ATUAL</div><h3>Principais categorias</h3></div></div>
-          <div id="categoryBars" class="bars"></div>
-        </article>
-        <article class="panel">
-          <div class="panel-head"><div><div class="eyebrow">AGING DO ESTOQUE</div><h3>Tempo sem movimentação</h3></div></div>
-          <div id="agingBars" class="bars"></div>
-        </article>
-        <article class="panel">
-          <div class="panel-head"><div><div class="eyebrow">GARGALOS</div><h3>Pendências por responsável/setor</h3></div></div>
-          <div id="ownerBars" class="bars"></div>
-        </article>
-        <article class="panel">
-          <div class="panel-head"><div><div class="eyebrow">STATUS</div><h3>Estoque por etapa operacional</h3></div></div>
-          <div id="statusBars" class="bars"></div>
-        </article>
-      </section>
-
-      <section class="panel table-panel">
-        <div class="table-toolbar">
-          <div>
-            <div class="eyebrow">DRILL-DOWN AUDITÁVEL</div>
-            <h3 id="tableTitle">Explorador de processos</h3>
-            <p id="tableMeta">—</p>
-          </div>
-          <div class="pager"><button id="prevPage" type="button">← Anterior</button><button id="nextPage" type="button">Próxima →</button></div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Protocolo</th><th>Abertura</th><th>Último trâmite</th><th>Categoria</th><th>Status</th><th>Gargalo</th><th>Sem mov.</th></tr></thead>
-            <tbody id="recordsBody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="panel coverage-panel">
-        <div class="panel-head"><div><div class="eyebrow">COBERTURA DOS INDICADORES</div><h3>O que pode e o que não pode ser publicado hoje</h3></div></div>
-        <div id="coverage" class="coverage-grid"></div>
-      </section>
-
-      <section class="panel warnings-panel">
-        <div class="eyebrow">REGRAS DE LEITURA</div>
-        <ul id="warnings"></ul>
-      </section>
-    </div>
-  </main>
-
+  <div id="app"></div>
   <script src="/app.js" defer></script>
 </body>
 </html>
