@@ -12,6 +12,8 @@ Fluxo de atualização:
 
 O arquivo Excel bruto **não é publicado** no GitHub porque contém dados pessoais e observações livres. O importador lê a aba `BASE23-26`, mantém apenas os campos necessários aos indicadores, reutiliza a classificação já consolidada quando disponível e grava somente o transporte público sanitizado.
 
+**Carga atual:** `BASE2326.xlsx`, 6.975 protocolos de 2025+, com dados até 22/08/2026.
+
 Para atualizar no Windows:
 
 ```bat
