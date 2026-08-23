@@ -1,51 +1,62 @@
 {
   "schema_version": 6,
-  "dataset": "SEPLAN 2025+ — visão pública sanitizada",
-  "source_rows": 6957,
+  "dataset": "SEPLAN 2025+ — Excel como fonte oficial, visão pública sanitizada",
+  "source_rows": 6975,
   "years": {
     "2025": 4165,
-    "2026": 2792
+    "2026": 2810
   },
-  "source_updated_at": "2026-08-20 18:58:21",
+  "source_updated_at": "2026-08-22 00:00:00",
   "generated_from": [
-    "SEPLAN_2025_MAIS_PROCESSADO.csv",
-    "SEPLAN_BASE_REFINADA_2025_MAIS_V03.csv"
+    "BASE2326.xlsx",
+    "SEPLAN_StatusReal_V08_Taxonomia_Consolidada.xlsx"
   ],
+  "source_of_truth": {
+    "type": "xlsx",
+    "sheet": "BASE23-26",
+    "note": "Os números do dashboard são regenerados a partir do Excel. O arquivo bruto não é publicado no repositório."
+  },
   "privacy": {
     "excluded_fields": [
-      "RequerenteNomeRazao",
-      "RequerenteCPFCNPJ",
-      "ResponsavelCPFCNPJ",
-      "ObservacaoAbertura",
-      "UltimoTramiteObservacao",
-      "ResponsavelGargalo",
-      "Inscricao"
+      "Requerente",
+      "CPF_CNPJ_REQUERENTE",
+      "NomeRT",
+      "CPF_CNPJ_RT",
+      "ObsAbertura",
+      "UltTramiteOBS",
+      "UsuarioAtual"
     ],
-    "note": "Dataset sanitizado para repositório público: não contém nomes de requerentes/responsáveis, CPF/CNPJ, observações livres nem inscrição imobiliária exata. O gargalo exibido é categoria operacional derivada do status."
+    "note": "Dataset sanitizado para repositório público: não contém nomes, CPF/CNPJ nem observações livres."
   },
   "default_period": {
     "from": "2026-01-01",
-    "to": "2026-08-20"
+    "to": "2026-08-22"
   },
   "default_threshold_days": 30,
+  "import_audit": {
+    "protocols_2025_plus": 6975,
+    "classification_memory_hits": 6974,
+    "new_or_unmapped": 1,
+    "new_or_unmapped_protocols": [
+      "2026-42152"
+    ]
+  },
   "artifact": {
     "storage": "gzip+base64-chunks",
     "format": "public-compact-v6",
-    "gzip_bytes": 48658,
-    "gzip_sha256": "519241b5ddb637fc3d2057b1bfb6abd7f6e4ba7a373f98814755d97ff1c1c806",
+    "gzip_bytes": 46999,
+    "gzip_sha256": "30acb3c7dbb6070305c86929ac5dcd687dd8f10bc16394f09557f67054ac3b95",
     "date_encoding": "days since 2025-01-01; -1 = null",
-    "note": "Transporte sanitizado em partes base64. Gargalo e dias sem movimento são derivados no backend; não há nomes, inscrição, observações ou identificadores pessoais.",
+    "note": "Transporte gerado automaticamente a partir do Excel; inclui apenas campos sanitizados.",
     "directory": "safe_chunks",
     "parts": [
-      "part-00",
-      "part-01",
-      "part-02-03",
-      "part-04-05",
-      "part-06",
-      "part-07",
-      "part-08-09",
-      "part-10"
+      "part-000",
+      "part-001",
+      "part-002",
+      "part-003",
+      "part-004",
+      "part-005"
     ],
-    "base64_chars": 64880
+    "base64_chars": 62668
   }
 }
