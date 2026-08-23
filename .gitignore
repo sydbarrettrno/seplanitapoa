@@ -6,3 +6,8 @@ venv/
 .vercel/
 .DS_Store
 Thumbs.db
+
+# A base Excel bruta contém dados pessoais e nunca deve ser publicada.
+*.xlsx
+*.xls
+entrada_excel/
