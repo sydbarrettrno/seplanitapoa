@@ -9,8 +9,8 @@ from functools import lru_cache
 
 from backend import core
 
-CHUNK_DIR = core.DATA_DIR / "safe_delivery_v06"
-PARTS = [f"part-{i:03d}" for i in range(6)]
+CHUNK_DIR = core.DATA_DIR / "final_chunks"
+PARTS = [f"part-{i:03d}" for i in range(11)]
 EXPECTED_BASE64_CHARS = 62420
 EXPECTED_GZIP_BYTES = 46813
 EXPECTED_SHA256 = "d28e0b7954d6cef59f66ce6c61e58a692906d99a4fb26cde6ca8de237e3ed9c8"
