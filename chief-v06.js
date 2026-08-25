@@ -31,11 +31,11 @@
     const prev = cmp.previous || {};
     const rows = [
       {name:'Recebidos', y2025:Number(prev.received || 0), y2026:Number(cur.received || 0)},
-      {name:'Concluídos da demanda corrente', y2025:Number(prev.cohort_concluded_formal || 0), y2026:Number(cur.cohort_concluded_formal || 0)}
+      {name:'Concluídos da própria demanda', y2025:Number(prev.cohort_concluded || 0), y2026:Number(cur.cohort_concluded || 0)}
     ];
     const max = Math.max(1, ...rows.flatMap(r => [r.y2025, r.y2026]));
     return `<article class="panel chief-panel">
-      <div class="chief-panel-head"><h3>2025 × 2026 — mesmo período</h3><div class="chief-legend"><span><i class="c25"></i>2025</span><span><i class="c26"></i>2026</span></div></div>
+      <div class="chief-panel-head"><h3>2025 × 2026 — mesmo período e mesma coorte</h3><div class="chief-legend"><span><i class="c25"></i>2025</span><span><i class="c26"></i>2026</span></div></div>
       <div class="chief-compare">${rows.map(r => `
         <div class="chief-compare-row">
           <div class="chief-compare-label">${esc(r.name)}</div>
@@ -55,7 +55,7 @@
       return `${m}/${String(y).slice(2)}`;
     };
     return `<article class="panel chief-panel chief-flow-panel">
-      <div class="chief-panel-head"><h3>Entrada × saída mensal</h3><div class="chief-legend"><span><i class="rec"></i>Recebidos</span><span><i class="con"></i>Concluídos</span></div></div>
+      <div class="chief-panel-head"><h3>Entrada mensal × produção total no mês</h3><div class="chief-legend"><span><i class="rec"></i>Recebidos</span><span><i class="con"></i>Produção total</span></div></div>
       <div class="chief-flow">${data.map(x => {
         const a=Number(x.received||0), b=Number(x.concluded||0);
         return `<div class="chief-flow-group">
@@ -73,10 +73,19 @@
     const m = data.metrics || {};
     const mg = data.management || {};
     const cmp = mg.comparison || {};
+    const cur = cmp.current || {};
     const prev = cmp.previous || {};
     const complaints = mg.complaints || {};
     const t = m.turnaround || {};
     const change = cmp.received_change_percent == null ? 'sem comparação' : `${cmp.received_change_percent > 0 ? '+' : ''}${dec(cmp.received_change_percent)}% vs 2025`;
+
+    const receivedCurrent = Number(cur.received || m.received || 0);
+    const concludedCurrentCohort = Number(cur.cohort_concluded || 0);
+    const pendingCurrentCohort = Math.max(0, receivedCurrent - concludedCurrentCohort);
+    const passiveAbsorbed = Number(cur.passive_absorbed || 0);
+    const totalProduction = Number(cur.concluded_total || m.concluded || 0);
+    const stockTotal = Number(m.stock || 0);
+    const stockPassive = Math.max(0, stockTotal - pendingCurrentCohort);
 
     document.getElementById('content').innerHTML = `
       <section class="chief-head">
@@ -85,17 +94,28 @@
       </section>
 
       <section class="chief-kpi-grid">
-        ${card('01','Processos recebidos',num(m.received),`${num(prev.received || 0)} em 2025 · ${change}`)}
-        ${card('02','Processos concluídos',num(m.concluded),`${num(m.concluded_formal)} formais · conclusão operacional no período`)}
-        ${card('03','Estoque pendente',num(m.stock),`${num(m.internal_queue)} fila interna · ${num(m.external_wait)} espera externa · ${num(m.suspended)} suspensos`)}
+        ${card('01','Processos recebidos',num(receivedCurrent),`${num(prev.received || 0)} em 2025 · ${change}`)}
+        ${card('02','Processos concluídos',num(totalProduction),`${num(concludedCurrentCohort)} da demanda 2026 + ${num(passiveAbsorbed)} do passivo 2025`)}
+        ${card('03','Estoque pendente',num(stockTotal),`${num(pendingCurrentCohort)} da demanda 2026 + ${num(stockPassive)} do passivo 2025`)}
         ${card('04','Tempo de tramitação',`${dec(t.mean_days)} dias`,`mediana ${dec(t.median_days)} · P90 ${dec(t.p90_days)} dias`)}
         ${card('05',`Parados > ${num(m.stopped?.threshold_days)} dias`,pct(m.stopped?.percent),`${num(m.stopped?.count)} de ${num(m.stopped?.eligible_stock)} na fila interna`)}
         ${card('06','Concluídos dentro do prazo','—','Sem fonte oficial de prazos e suspensões',false)}
         ${card('07','Diligências por processo','—','Sem histórico completo de eventos',false)}
         ${card('08','Fiscalizações realizadas','—','A base identifica protocolos de fiscalização, não comprova o ato realizado',false)}
-        ${card('09','Denúncias recebidas / respondidas',`${num(complaints.received)} / ${num(complaints.responded_operational)}`,`${num(complaints.stock)} pendentes`)}
+        ${card('09','Denúncias recebidas / respondidas',`${num(complaints.received)} / ${num(complaints.responded_operational)}`,`${num(complaints.stock)} pendentes no estoque total`,true)}
         ${card('10','Projetos públicos por etapa','—','Carteira de projetos não integrada',false)}
-        ${card('11','Pendências por responsável / setor',num(m.stock),`Interno ${num(m.internal_queue)} · Externo ${num(m.external_wait)} · Suspenso ${num(m.suspended)}`)}
+        ${card('11','Pendências por responsável / setor',num(stockTotal),`Interno ${num(m.internal_queue)} · Externo ${num(m.external_wait)} · Suspenso ${num(m.suspended)}`)}
+      </section>
+
+      <section class="chief-grid-2">
+        ${bars('Demanda 2026 — situação dos 2.810 recebidos', [
+          {name:'Concluídos', value: concludedCurrentCohort},
+          {name:'Pendentes', value: pendingCurrentCohort}
+        ], 2)}
+        ${bars('Produção 2026 — composição das conclusões', [
+          {name:'Demanda aberta em 2026', value: concludedCurrentCohort},
+          {name:'Passivo aberto em 2025', value: passiveAbsorbed}
+        ], 2)}
       </section>
 
       <section class="chief-grid-2">
