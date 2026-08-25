@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backend.executive_core import dashboard, health, query_from_params
+from backend.final_entry import dashboard, health, query_from_params
 
 
 def _flatten(query_string: str) -> dict[str, str]:
