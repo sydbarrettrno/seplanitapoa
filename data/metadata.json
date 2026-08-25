@@ -1,20 +1,19 @@
 {
   "schema_version": 6,
-  "dataset": "SEPLAN 2025+ — Excel como fonte oficial, visão pública sanitizada",
+  "dataset": "SEPLAN 2025+ — base final reconciliada V03, visão pública sanitizada",
   "source_rows": 6975,
   "years": {
     "2025": 4165,
     "2026": 2810
   },
-  "source_updated_at": "2026-08-22 00:00:00",
+  "source_updated_at": "2026-08-22",
   "generated_from": [
-    "BASE2326.xlsx",
-    "SEPLAN_StatusReal_V08_Taxonomia_Consolidada.xlsx"
+    "SEPLAN_BASE_ORIGINAL_FINAL_RESUMO_V03.xlsx"
   ],
   "source_of_truth": {
     "type": "xlsx",
-    "sheet": "BASE23-26",
-    "note": "Os números do dashboard são regenerados a partir do Excel. O arquivo bruto não é publicado no repositório."
+    "sheet": "BASE",
+    "note": "Dados originais e finais permanecem lado a lado. O dashboard publica apenas a visão sanitizada dos campos finais."
   },
   "privacy": {
     "excluded_fields": [
@@ -26,37 +25,32 @@
       "UltTramiteOBS",
       "UsuarioAtual"
     ],
-    "note": "Dataset sanitizado para repositório público: não contém nomes, CPF/CNPJ nem observações livres."
+    "note": "Dataset sanitizado para publicação: sem nomes, CPF/CNPJ ou observações livres."
   },
   "default_period": {
     "from": "2026-01-01",
     "to": "2026-08-22"
   },
   "default_threshold_days": 30,
-  "import_audit": {
-    "protocols_2025_plus": 6975,
-    "classification_memory_hits": 6974,
-    "new_or_unmapped": 1,
-    "new_or_unmapped_protocols": [
-      "2026-42152"
-    ]
+  "validation": {
+    "protocols": 6975,
+    "unique_protocols": 6975,
+    "categories": 50,
+    "candidate_categories": 0,
+    "categories_under_5": 0,
+    "stock": 2208,
+    "internal_queue": 1548,
+    "external_wait": 627,
+    "suspended": 33,
+    "internal_over_30": 1089
   },
   "artifact": {
-    "storage": "gzip+base64-chunks",
-    "format": "public-compact-v6",
-    "gzip_bytes": 46999,
-    "gzip_sha256": "30acb3c7dbb6070305c86929ac5dcd687dd8f10bc16394f09557f67054ac3b95",
+    "storage": "gzip-json",
+    "format": "public-compact-v6-final",
+    "file": "delivery_payload.gz",
+    "gzip_bytes": 46813,
+    "gzip_sha256": "d28e0b7954d6cef59f66ce6c61e58a692906d99a4fb26cde6ca8de237e3ed9c8",
     "date_encoding": "days since 2025-01-01; -1 = null",
-    "note": "Transporte gerado automaticamente a partir do Excel; inclui apenas campos sanitizados.",
-    "directory": "safe_chunks",
-    "parts": [
-      "part-000",
-      "part-001",
-      "part-002",
-      "part-003",
-      "part-004",
-      "part-005"
-    ],
-    "base64_chars": 62668
+    "note": "Carga gerada da base final reconciliada e sanitizada."
   }
 }
