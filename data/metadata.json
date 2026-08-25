@@ -68,14 +68,19 @@
     "gzip_sha256": "d28e0b7954d6cef59f66ce6c61e58a692906d99a4fb26cde6ca8de237e3ed9c8",
     "base64_chars": 62420,
     "date_encoding": "days since 2025-01-01; -1 = null",
-    "directory": "safe_delivery_v06",
+    "directory": "final_chunks",
     "parts": [
       "part-000",
       "part-001",
       "part-002",
       "part-003",
       "part-004",
-      "part-005"
+      "part-005",
+      "part-006",
+      "part-007",
+      "part-008",
+      "part-009",
+      "part-010"
     ],
     "note": "Carga sanitizada gerada da base final reconciliada V03 e usada pelo dashboard de entrega."
   }
