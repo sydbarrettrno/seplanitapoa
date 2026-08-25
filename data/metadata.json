@@ -1,6 +1,6 @@
 {
-  "schema_version": 6,
-  "dataset": "SEPLAN 2025+ — base final reconciliada V03, visão pública sanitizada",
+  "schema_version": 7,
+  "dataset": "SEPLAN 2025+ — base reconciliada com taxonomia operacional V07, visão pública sanitizada",
   "source_rows": 6975,
   "years": {
     "2025": 4165,
@@ -8,12 +8,14 @@
   },
   "source_updated_at": "2026-08-22",
   "generated_from": [
-    "SEPLAN_BASE_ORIGINAL_FINAL_RESUMO_V03.xlsx"
+    "SEPLAN_BASE_TAXONOMIA_V07.xlsx"
   ],
+  "taxonomy_version": "V07",
+  "taxonomy_overrides": 632,
   "source_of_truth": {
     "type": "xlsx",
     "sheet": "BASE",
-    "note": "Dados originais e finais lado a lado; dashboard usa campos finais sanitizados."
+    "note": "Dados originais e finais lado a lado; dashboard usa campos finais sanitizados da taxonomia V07."
   },
   "privacy": {
     "excluded_fields": [
@@ -35,7 +37,7 @@
   "validation": {
     "protocols": 6975,
     "unique_protocols": 6975,
-    "categories": 50,
+    "categories": 42,
     "candidate_categories": 0,
     "categories_under_5": 0,
     "stock": 2208,
@@ -63,7 +65,7 @@
   },
   "delivery_artifact": {
     "storage": "gzip+base64-chunks",
-    "format": "public-compact-v6-final",
+    "format": "public-compact-v6-final + taxonomy-v07-runtime",
     "gzip_bytes": 46813,
     "gzip_sha256": "d28e0b7954d6cef59f66ce6c61e58a692906d99a4fb26cde6ca8de237e3ed9c8",
     "base64_chars": 62420,
@@ -82,6 +84,6 @@
       "part-009",
       "part-010"
     ],
-    "note": "Carga sanitizada gerada da base final reconciliada V03 e usada pelo dashboard de entrega."
+    "note": "Carga sanitizada validada de 6.975 protocolos; 632 correções de categoria/macro da taxonomia V07 são aplicadas deterministicamente no backend."
   }
 }
