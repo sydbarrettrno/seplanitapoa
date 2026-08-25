@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import gzip
 import hashlib
 import json
@@ -8,7 +9,10 @@ from functools import lru_cache
 
 from backend import core
 
-DATA_PATH = core.DATA_DIR / "delivery_payload.gz"
+CHUNK_DIR = core.DATA_DIR / "safe_delivery_v06"
+PARTS = [f"part-{i:03d}" for i in range(6)]
+EXPECTED_BASE64_CHARS = 62420
+EXPECTED_GZIP_BYTES = 46813
 EXPECTED_SHA256 = "d28e0b7954d6cef59f66ce6c61e58a692906d99a4fb26cde6ca8de237e3ed9c8"
 EXPECTED_ROWS = 6975
 BASE_DATE = date(2025, 1, 1)
@@ -25,13 +29,27 @@ def _iso(offset):
     return (BASE_DATE + timedelta(days=value)).isoformat()
 
 
+def _read_compressed_payload() -> bytes:
+    try:
+        encoded = "".join((CHUNK_DIR / name).read_text(encoding="ascii") for name in PARTS)
+    except Exception as exc:
+        raise RuntimeError("Carga bloqueada: chunks da base reconciliada ausentes ou ilegíveis.") from exc
+    if len(encoded) != EXPECTED_BASE64_CHARS:
+        raise RuntimeError("Carga bloqueada: tamanho base64 da base reconciliada diverge.")
+    try:
+        compressed = base64.b64decode(encoded, validate=True)
+    except Exception as exc:
+        raise RuntimeError("Carga bloqueada: base64 da base reconciliada inválido.") from exc
+    if len(compressed) != EXPECTED_GZIP_BYTES:
+        raise RuntimeError("Carga bloqueada: tamanho gzip da base reconciliada diverge.")
+    if hashlib.sha256(compressed).hexdigest() != EXPECTED_SHA256:
+        raise RuntimeError("Carga bloqueada: checksum da base reconciliada diverge.")
+    return compressed
+
+
 @lru_cache(maxsize=1)
 def load_rows():
-    compressed = DATA_PATH.read_bytes()
-    actual_sha = hashlib.sha256(compressed).hexdigest()
-    if actual_sha != EXPECTED_SHA256:
-        raise RuntimeError("Carga bloqueada: checksum da base reconciliada diverge.")
-
+    compressed = _read_compressed_payload()
     try:
         payload = json.loads(gzip.decompress(compressed).decode("utf-8"))
     except Exception as exc:
