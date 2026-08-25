@@ -13,7 +13,7 @@
   "source_of_truth": {
     "type": "xlsx",
     "sheet": "BASE",
-    "note": "Dados originais e finais permanecem lado a lado. O dashboard publica apenas a visão sanitizada dos campos finais."
+    "note": "Dados originais e finais permanecem lado a lado. O dashboard de entrega usa a visão sanitizada dos campos finais."
   },
   "privacy": {
     "excluded_fields": [
@@ -45,12 +45,29 @@
     "internal_over_30": 1089
   },
   "artifact": {
+    "storage": "gzip+base64-chunks",
+    "format": "public-compact-v6-legado",
+    "gzip_bytes": 46999,
+    "gzip_sha256": "30acb3c7dbb6070305c86929ac5dcd687dd8f10bc16394f09557f67054ac3b95",
+    "date_encoding": "days since 2025-01-01; -1 = null",
+    "directory": "safe_chunks",
+    "parts": [
+      "part-000",
+      "part-001",
+      "part-002",
+      "part-003",
+      "part-004",
+      "part-005"
+    ],
+    "note": "Transporte legado mantido somente para compatibilidade dos testes/core anteriores."
+  },
+  "delivery_artifact": {
     "storage": "gzip-json",
     "format": "public-compact-v6-final",
     "file": "delivery_payload.gz",
     "gzip_bytes": 46813,
     "gzip_sha256": "d28e0b7954d6cef59f66ce6c61e58a692906d99a4fb26cde6ca8de237e3ed9c8",
     "date_encoding": "days since 2025-01-01; -1 = null",
-    "note": "Carga gerada da base final reconciliada e sanitizada."
+    "note": "Carga sanitizada gerada da base final reconciliada V03 e usada pelo dashboard de entrega."
   }
 }
